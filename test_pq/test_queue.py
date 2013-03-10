@@ -2,7 +2,7 @@ from django.test import TestCase, TransactionTestCase
 
 from pq import Queue
 from pq.job import Job
-from .fixtures import say_hello
+from .fixtures import say_hello, Calculator
 
 class TestQueueCreation(TransactionTestCase):
 
@@ -46,24 +46,52 @@ class TestEnqueue(TransactionTestCase):
         self.assertIsNotNone(self.job.enqueued_at)
 
 
-class TestPopJobOnEmpty(TransactionTestCase):
+class TestDequeueOnEmpty(TransactionTestCase):
 
     def setUp(self):
         self.q = Queue()
 
     def test_pop_job_on_empty(self):
-        job = self.q.pop_job()
+        job = self.q.dequeue()
         self.assertIsNone(job)
 
 
-class TestPopJob(TransactionTestCase):
+class TestDequeue(TransactionTestCase):
 
     def setUp(self):
         self.q = Queue()
-        self.job = Job.create(func=say_hello, args=('Nick',), kwargs=dict(foo='bar'))
-        self.q.enqueue_job(self.job)
+        self.result = self.q.enqueue(say_hello, 'Rick', foo='bar')
+        #self.result2 = q.enqueue(c.calculate, 3, 4)
+        #self.c = Calculator(2)
 
-    def test_pop_job(self):
-        job = self.q.pop_job()
-        self.assertEqual(job.func_name, u'test_pq.fixtures.say_hello')
+    def test_dequeue(self):
+        """Dequeueing jobs from queues."""
 
+        # Dequeue a job (not a job ID) off the queue
+        self.assertEquals(self.q.count, 1)
+        job = self.q.dequeue()
+        self.assertEquals(job.id, self.result.id)
+        self.assertEquals(job.func, say_hello)
+        self.assertEquals(job.origin, self.q.name)
+        self.assertEquals(job.args[0], 'Rick')
+        self.assertEquals(job.kwargs['foo'], 'bar')
+
+        # ...and assert the queue count when down
+        self.assertEquals(self.q.count, 0)
+
+
+class TestDequeueInstanceMethods(TransactionTestCase):
+
+    def setUp(self):
+        self.q = Queue()
+        self.c = Calculator(2)
+        self.result = self.q.enqueue(self.c.calculate, 3, 4)
+
+
+    def test_dequeue_instance_method(self):
+        """Dequeueing instance method jobs from queues."""
+
+        job = self.q.dequeue()
+
+        self.assertEquals(job.func.__name__, 'calculate')
+        self.assertEquals(job.args, (3, 4))

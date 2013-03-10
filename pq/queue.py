@@ -104,8 +104,11 @@ class Queue(models.Model):
             job.save()
         return job
 
-    def pop_job(self):
-        """Pop the job from the queue"""
+    def dequeue(self):
+        """Dequeues the front-most job from this queue.
+
+        Returns a Job instance, which can be executed or inspected.
+        """
         with transaction.commit_on_success(using=self.connection):
             try:
                 job = Job.objects.using(self.connection).select_for_update().filter(
