@@ -1,3 +1,3 @@
-from .models import Queue as PQ
+from .queue import Queue as PQ
 
 Queue = PQ.create
