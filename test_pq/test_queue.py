@@ -1,6 +1,8 @@
 from django.test import TestCase, TransactionTestCase
 
+
 from pq import Queue
+from pq.queue import Queue as PQ
 from pq.job import Job
 from .fixtures import say_hello, Calculator
 
@@ -95,3 +97,56 @@ class TestDequeueInstanceMethods(TransactionTestCase):
 
         self.assertEquals(job.func.__name__, 'calculate')
         self.assertEquals(job.args, (3, 4))
+
+
+class TestDequeueAnyEmpty(TransactionTestCase):
+
+    def setUp(self):
+        self.fooq = Queue('foo')
+        self.barq = Queue('bar')
+
+    def test_dequeue_any_empty(self):
+        """Fetching work from any given queue."""
+
+        self.assertEquals(PQ.dequeue_any([self.fooq, self.barq], None), None)
+
+
+class TestDequeueAnySingle(TransactionTestCase):
+
+    def setUp(self):
+        self.fooq = Queue('foo')
+        self.barq = Queue('bar')
+        # Enqueue a single item
+        self.barq.enqueue(say_hello)
+
+    def test_dequeue_any_single(self):
+
+        job, queue = PQ.dequeue_any([self.fooq, self.barq], None)
+        self.assertEquals(job.func, say_hello)
+        self.assertEquals(queue, self.barq)
+
+
+class TestDequeueAnyMultiple(TransactionTestCase):
+
+    def setUp(self):
+        self.fooq = Queue('foo')
+        self.barq = Queue('bar')
+        # Enqueue items on both queues
+        self.barq.enqueue(say_hello, 'for Bar')
+        self.fooq.enqueue(say_hello, 'for Foo')
+
+    def test_dequeue_any_multiple(self):
+
+        job, queue = PQ.dequeue_any([self.fooq, self.barq], None)
+        self.assertEquals(queue, self.fooq)
+        self.assertEquals(job.func, say_hello)
+        self.assertEquals(job.origin, self.fooq.name)
+        self.assertEquals(job.args[0], 'for Foo',
+                'Foo should be dequeued first.')
+
+        job, queue = PQ.dequeue_any([self.fooq, self.barq], None)
+        self.assertEquals(queue, self.barq)
+        self.assertEquals(job.func, say_hello)
+        self.assertEquals(job.origin, self.barq.name)
+        self.assertEquals(job.args[0], 'for Bar',
+                'Bar should be dequeued second.')

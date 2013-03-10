@@ -1,3 +1,4 @@
+import time
 import times
 
 from django.db import transaction
@@ -8,6 +9,9 @@ from .job import Job
 
 PQ_DEFAULT_JOB_TIMEOUT = 180 if not hasattr(
     settings, 'PQ_DEFAULT_JOB_TIMEOUT') else settings.PQ_DEFAULT_JOB_TIMEOUT
+PQ_POLL_CYCLE = 60 if not hasattr(
+    settings, 'PQ_POLL_CYCLE') else settings.PQ_POLL_CYCLE
+
 
 class Queue(models.Model):
 
@@ -124,4 +128,32 @@ class Queue(models.Model):
                 job = None
 
         return job
+
+    @classmethod
+    def dequeue_any(cls, queues, timeout):
+        """Helper method, that polls the database queues for new jobs.
+        The timeout parameter is interpreted as follows:
+            None - non-blocking (return immediately)
+             > 0 - maximum number of seconds to block
+
+        Returns a job instance and a queue
+        """
+        if not timeout:
+            timeout = 1
+        job = None
+        while timeout > 0:
+            for queue in queues:
+                with transaction.commit_on_success(using=queue.connection):
+                    try:
+                        job = Job.objects.using(queue.connection).select_for_update().filter(
+                            queue=queue).order_by('-id')[0]
+                        job.queue = None
+                        job.save()
+                        return job, queue
+                    except IndexError:
+                        pass
+            if timeout > PQ_POLL_CYCLE:
+                time.sleep(PQ_POLL_CYCLE)
+            timeout -= PQ_POLL_CYCLE
+        return
 
