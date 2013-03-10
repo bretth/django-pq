@@ -1,5 +1,6 @@
 import times
 
+from django.db import transaction
 from django.db import models
 from django.conf import settings
 
@@ -96,8 +97,23 @@ class Queue(models.Model):
 
         if self._async:
             job.queue_id = self.name
+            job.status = Job.QUEUED
             job.save()
         else:
             job.perform()
             job.save()
         return job
+
+    def pop_job(self):
+        """Pop the job from the queue"""
+        with transaction.commit_on_success(using=self.connection):
+            try:
+                job = Job.objects.using(self.connection).select_for_update().filter(
+                queue=self, status=Job.QUEUED).order_by('-id')[0]
+                job.queue = None
+                job.save()
+            except IndexError:
+                job = None
+
+        return job
+
