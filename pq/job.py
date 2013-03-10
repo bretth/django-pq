@@ -1,6 +1,8 @@
 import importlib
 import inspect
+
 import times
+from picklefield.fields import PickledObjectField
 from django.db import models
 from json_field import JSONField
 
@@ -21,19 +23,19 @@ class Job(models.Model):
     created_at = models.DateTimeField()
     origin = models.CharField(max_length=254, null=True, blank=True)
     queue = models.ForeignKey('Queue', null=True, blank=True)
-    instance = models.CharField(max_length=254, null=True, blank=True)
+    instance = PickledObjectField(null=True, blank=True)
     func_name = models.CharField(max_length=254)
-    args = JSONField()
-    kwargs = JSONField()
+    args = PickledObjectField(blank=True)
+    kwargs = PickledObjectField(blank=True)
     description = models.CharField(max_length=254)
     result_ttl = models.PositiveIntegerField(null=True, blank=True)
     status = models.PositiveIntegerField(null=True, blank=True)
     enqueued_at = models.DateTimeField(null=True, blank=True)
     ended_at =  models.DateTimeField(null=True, blank=True)
     result = JSONField()
-    #exc_info = None
+    exc_info = models.TextField(null=True, blank=True)
     timeout = models.PositiveIntegerField(null=True, blank=True)
-    #meta = {}
+    meta = JSONField()
 
     @classmethod
     def create(cls, func, args=None, kwargs=None, connection=None,
