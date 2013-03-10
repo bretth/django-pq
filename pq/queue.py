@@ -28,6 +28,11 @@ class Queue(models.Model):
 
         return queue
 
+    @property
+    def count(self):
+        return Job.objects.using(self.connection).filter(queue_id=self.name).count()
+
+
     def enqueue_call(self, func, args=None, kwargs=None, timeout=None, result_ttl=None): #noqa
         """Creates a job to represent the delayed function call and enqueues
         it.
