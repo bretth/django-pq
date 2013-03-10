@@ -97,3 +97,8 @@ class Job(models.Model):
         """Invokes the job function with the job arguments."""
         self.result = self.func(*self.args, **self.kwargs)
         return self.result
+
+    def save(self, *args, **kwargs):
+        kwargs.setdefault('using', self.connection)
+        super(Job, self).save(*args, **kwargs)
+
