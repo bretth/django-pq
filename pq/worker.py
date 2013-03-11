@@ -252,7 +252,7 @@ class Worker(models.Model):
                         green(', '.join(qnames)))
                 timeout = None if burst else max(1, self.default_worker_ttl - 60)
                 try:
-                    result = PQ.dequeue_any(self.queues, timeout)
+                    result = self.dequeue_job_and_maintain_ttl(timeout)
                     if result is None:
                         break
                 except StopRequested:
@@ -261,21 +261,28 @@ class Worker(models.Model):
                 self.state = 'busy'
 
                 job, queue = result
-                # Use the public setter here, to immediately update Redis
                 job.status = Job.STARTED
                 job.save()
                 self.log.info('%s: %s (%s)' % (green(queue.name),
                     blue(job.description), job.id))
 
-                #self.connection.expire(self.key, (job.timeout or 180) + 60)
                 self.fork_and_perform_job(job)
-                #self.connection.expire(self.key, self.default_worker_ttl)
+
 
                 did_perform_work = True
         finally:
             if not self.is_horse:
                 self.register_death()
         return did_perform_work
+
+    def dequeue_job_and_maintain_ttl(self, timeout):
+        while True:
+            try:
+                return PQ.dequeue_any(self.queues, timeout)
+            except DequeueTimeout:
+                pass
+
+            self.log.debug('Sending heartbeat to prevent worker timeout.')
 
     def fork_and_perform_job(self, job):
         """Spawns a work horse to perform the actual work and passes it a job.

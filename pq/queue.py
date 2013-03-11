@@ -6,6 +6,7 @@ from django.db import models
 from django.conf import settings
 
 from .job import Job
+from .exceptions import DequeueTimeout
 
 PQ_DEFAULT_JOB_TIMEOUT = 180 if not hasattr(
     settings, 'PQ_DEFAULT_JOB_TIMEOUT') else settings.PQ_DEFAULT_JOB_TIMEOUT
@@ -22,6 +23,7 @@ class Queue(models.Model):
     connection = None
     name = models.CharField(max_length=100, primary_key=True, default='default')
     default_timeout = models.PositiveIntegerField(null=True, blank=True)
+    cleaned = models.DateTimeField(null=True, blank=True)
     _async = True
 
     @classmethod
@@ -155,8 +157,8 @@ class Queue(models.Model):
 
         Returns a job instance and a queue
         """
-        if not timeout:
-            timeout = 1
+        burst = True if not timeout else False
+        timeout = timeout or 1
         job = None
         while timeout > 0:
             for queue in queues:
@@ -172,7 +174,11 @@ class Queue(models.Model):
             if timeout > PQ_POLL_CYCLE:
                 time.sleep(PQ_POLL_CYCLE)
             timeout -= PQ_POLL_CYCLE
-        return
+        if burst:
+            return
+        # If it doesn't complete in timeout then we raise an error
+        # which can be caught by the worker to refresh the connection
+        raise DequeueTimeout(timeout)
 
 class FailedQueue(Queue):
     class Meta:
