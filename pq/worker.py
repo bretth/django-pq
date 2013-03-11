@@ -351,7 +351,7 @@ class Worker(models.Model):
             job.status = Job.FINISHED
             job.ended_at = times.now()
             job.result_ttl = job.get_ttl(self.default_result_ttl)
-            if job.result_ttl > 0:
+            if job.result_ttl != 0:
                 job.save()
             else:
                 job.delete()
