@@ -154,7 +154,7 @@ class Worker(models.Model):
 
 
     def register_birth(self):  # noqa
-        """Registers its own birth, savingg to Postgres"""
+        """Registers its own birth, saving to Postgres"""
         self.log.debug('Registering birth of worker %s' % (self.calculated_name,))
         with transaction.commit_on_success(using=self.connection):
             if Worker.objects.using(self.connection).filter(name=self.calculated_name)[:]:
