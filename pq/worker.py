@@ -28,7 +28,7 @@ from .utils import make_colorizer
 from .exceptions import NoQueueError, UnpickleError, DequeueTimeout, StopRequested
 from .timeouts import death_penalty_after
 
-VERSION = pkg_resources.require("django-pq")[0].version
+from .version import __version__ as VERSION
 
 
 green = make_colorizer('darkgreen')
