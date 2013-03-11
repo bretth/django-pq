@@ -30,7 +30,7 @@ class Queue(models.Model):
                connection='default', async=True):
         """Returns a Queue ready for accepting jobs"""
         queue, created = cls.objects.using(connection).get_or_create(
-            name='default', defaults={'default_timeout': default_timeout})
+            name=name, defaults={'default_timeout': default_timeout})
         queue.connection = connection
         queue._async = async
 
