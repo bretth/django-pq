@@ -36,6 +36,19 @@ class Queue(models.Model):
 
         return queue
 
+    @classmethod
+    def all(cls, connection='default'):
+        allqs = []
+        queues = cls.objects.using(connection).all()[:]
+        for q in queues:
+            if q.name == 'failed':
+                allqs.append(get_failed_queue(connection))
+            else:
+                allqs.append(q)
+
+        return allqs
+
+
     @property
     def count(self):
         return Job.objects.using(self.connection).filter(queue_id=self.name).count()
@@ -168,4 +181,29 @@ class FailedQueue(Queue):
     @classmethod
     def create(cls, connection='default'):
         return super(FailedQueue, cls).create('failed', connection=connection)
+
+    def quarantine(self, job, exc_info):
+        """Puts the given Job in quarantine (i.e. put it on the failed
+        queue).
+
+        This is different from normal job enqueueing, since certain meta data
+        must not be overridden (e.g. `origin` or `enqueued_at`) and other meta
+        data must be inserted (`ended_at` and `exc_info`).
+        """
+        job.ended_at = times.now()
+        job.exc_info = exc_info
+        return self.enqueue_job(job, timeout=job.timeout, set_meta_data=False)
+
+
+    def requeue(self, job_id):
+        """Requeues the job with the given job ID."""
+        with transaction.commit_on_success(self.connection):
+            job = Job.objects.using(self.connection).select_for_update().get(id=job_id)
+            # Delete it from the failed queue (raise an error if that failed)
+            job.queue = None
+            job.status = Job.QUEUED
+            job.exc_info = None
+            job.save()
+            q = Queue.create(job.origin, connection=self.connection)
+            q.enqueue_job(job, timeout=job.timeout)
 

@@ -5,7 +5,7 @@ from pq import Queue
 from pq.queue import Queue as PQ
 from pq.queue import FailedQueue, get_failed_queue
 from pq.job import Job
-from .fixtures import say_hello, Calculator
+from .fixtures import say_hello, Calculator, div_by_zero, some_calculation
 
 class TestQueueCreation(TransactionTestCase):
 
@@ -157,3 +157,59 @@ class TestGetFailedQueue(TransactionTestCase):
     def test_get_failed_queue(self):
         fq = get_failed_queue()
         self.assertIsInstance(fq, FailedQueue)
+
+
+class TestFQueueQuarantine(TransactionTestCase):
+
+    def setUp(self):
+        job = Job.create(func=div_by_zero, args=(1, 2, 3))
+        job.origin = 'fake'
+        job.save()
+        self.job = job
+
+    def test_quarantine_job(self):
+        """Requeueing existing jobs."""
+
+        get_failed_queue().quarantine(self.job, Exception('Some fake error'))  # noqa
+        self.assertItemsEqual(PQ.all(), [get_failed_queue()])  # noqa
+        self.assertEquals(get_failed_queue().count, 1)
+
+
+class TestFQueueQuarantineTimeout(TransactionTestCase):
+
+    def setUp(self):
+        job = Job.create(func=div_by_zero, args=(1, 2, 3))
+        job.origin = 'fake'
+        job.timeout = 200
+        job.save()
+        self.job = job
+        self.fq = get_failed_queue()
+
+    def test_quarantine_preserves_timeout(self):
+        """Quarantine preserves job timeout."""
+
+        self.fq.quarantine(self.job, Exception('Some fake error'))
+        self.assertEquals(self.job.timeout, 200)
+
+
+class TestRequeue(TransactionTestCase):
+
+    def setUp(self):
+        job = Job.create(func=div_by_zero, args=(1, 2, 3))
+        job.origin = 'fake'
+        job.save()
+        self.job = job
+        self.fq = get_failed_queue()
+
+    def test_requeue(self):
+        self.fq.requeue(self.job.id)
+        self.assertEquals(self.fq.count, 0)
+        self.assertEquals(Queue('fake').count, 1)
+
+
+class TestAsyncFalse(TransactionTestCase):
+    def test_async_false(self):
+     """Executes a job immediately if async=False."""
+     q = Queue(async=False)
+     job = q.enqueue(some_calculation, args=(2, 3))
+     self.assertEqual(job.result, 6)
