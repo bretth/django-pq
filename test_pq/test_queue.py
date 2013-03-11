@@ -3,6 +3,7 @@ from django.test import TestCase, TransactionTestCase
 
 from pq import Queue
 from pq.queue import Queue as PQ
+from pq.queue import FailedQueue, get_failed_queue
 from pq.job import Job
 from .fixtures import say_hello, Calculator
 
@@ -150,3 +151,9 @@ class TestDequeueAnyMultiple(TransactionTestCase):
         self.assertEquals(job.origin, self.barq.name)
         self.assertEquals(job.args[0], 'for Bar',
                 'Bar should be dequeued second.')
+
+
+class TestGetFailedQueue(TransactionTestCase):
+    def test_get_failed_queue(self):
+        fq = get_failed_queue()
+        self.assertIsInstance(fq, FailedQueue)

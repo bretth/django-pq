@@ -12,6 +12,10 @@ PQ_DEFAULT_JOB_TIMEOUT = 180 if not hasattr(
 PQ_POLL_CYCLE = 60 if not hasattr(
     settings, 'PQ_POLL_CYCLE') else settings.PQ_POLL_CYCLE
 
+def get_failed_queue(connection='default'):
+    """Returns a handle to the special failed queue."""
+    return FailedQueue.create(connection=connection)
+
 
 class Queue(models.Model):
 
@@ -156,4 +160,12 @@ class Queue(models.Model):
                 time.sleep(PQ_POLL_CYCLE)
             timeout -= PQ_POLL_CYCLE
         return
+
+class FailedQueue(Queue):
+    class Meta:
+        proxy = True
+
+    @classmethod
+    def create(cls, connection='default'):
+        return super(FailedQueue, cls).create('failed', connection=connection)
 
