@@ -32,10 +32,10 @@ class Job(models.Model):
     status = models.PositiveIntegerField(null=True, blank=True)
     enqueued_at = models.DateTimeField(null=True, blank=True)
     ended_at =  models.DateTimeField(null=True, blank=True)
-    result = JSONField()
+    result = PickledObjectField()
     exc_info = models.TextField(null=True, blank=True)
     timeout = models.PositiveIntegerField(null=True, blank=True)
-    meta = JSONField()
+    meta = PickledObjectField(blank=True)
 
     @classmethod
     def create(cls, func, args=None, kwargs=None, connection=None,
