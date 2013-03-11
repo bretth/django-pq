@@ -79,6 +79,14 @@ class Job(models.Model):
         module = importlib.import_module(module_name)
         return getattr(module, func_name)
 
+
+    def get_ttl(self, default_ttl=None):
+        """Returns ttl for a job that determines how long a job and its result
+        will be persisted. In the future, this method will also be responsible
+        for determining ttl for repeated jobs.
+        """
+        return default_ttl if self.result_ttl is None else self.result_ttl
+
     # Representation
     def get_call_string(self):  # noqa
         """Returns a string representation of the call, formatted as a regular
