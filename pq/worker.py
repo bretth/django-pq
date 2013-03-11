@@ -59,7 +59,7 @@ class Worker(models.Model):
         return Worker.objects.using(connection).all()
 
     @classmethod
-    def create(cls, queues, name='worker',
+    def create(cls, queues, name=None,
             default_result_ttl=PQ_DEFAULT_RESULT_TTL, connection='default',
             exc_handler=None, default_worker_ttl=PQ_DEFAULT_WORKER_TTL):  # noqa
         """Create a Worker instance without saving to the backend.
@@ -237,7 +237,7 @@ class Worker(models.Model):
 
         did_perform_work = False
         self.register_birth()
-        self.log.info('RQ worker started, version %s' % VERSION)
+        self.log.info('PQ worker started, version %s' % VERSION)
         self.state = 'starting'
         try:
             while True:
