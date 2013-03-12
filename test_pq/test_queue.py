@@ -1,3 +1,4 @@
+import time
 from django.test import TestCase, TransactionTestCase
 
 
@@ -5,6 +6,9 @@ from pq import Queue
 from pq.queue import Queue as PQ
 from pq.queue import FailedQueue, get_failed_queue
 from pq.job import Job
+from pq.worker import Worker
+from pq.exceptions import DequeueTimeout
+
 from .fixtures import say_hello, Calculator, div_by_zero, some_calculation
 
 class TestQueueCreation(TransactionTestCase):
@@ -213,3 +217,32 @@ class TestAsyncFalse(TransactionTestCase):
      q = Queue(async=False)
      job = q.enqueue(some_calculation, args=(2, 3))
      self.assertEqual(job.result, 6)
+
+
+class TestDeleteExpiredTTL(TransactionTestCase):
+    def setUp(self):
+        q = Queue()
+        q.enqueue(say_hello, kwargs={'name':'bob'}, result_ttl=1)  # expires
+        q.enqueue(say_hello, kwargs={'name':'polly'})  # won't expire in this test lifecycle 
+        q.enqueue(say_hello, kwargs={'name':'frank'}, result_ttl=-1) # never expires
+        w = Worker.create([q])
+        w.work(burst=True)
+        q.enqueue(say_hello, kwargs={'name':'david'}) # hasn't run yet
+        self.q = q
+        
+    def test_delete_expired_ttl(self):
+        time.sleep(1)
+        self.q.delete_expired_ttl()
+        jobs = Job.objects.all()[:]
+        self.assertEqual(len(jobs), 3)
+
+
+class TestDequeueTimeout(TransactionTestCase):
+    def setUp(self):
+        q = Queue()
+        self.q = q
+        
+    def test_dequeue_timeout(self):
+        with self.assertRaises(DequeueTimeout):
+            PQ.dequeue_any([self.q], timeout=1)
+

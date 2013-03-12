@@ -56,6 +56,12 @@ class Queue(models.Model):
         return Job.objects.using(self.connection).filter(queue_id=self.name).count()
 
 
+    def delete_expired_ttl(self):
+        """Delete jobs from the queue which have expired"""
+        with transaction.commit_on_success(using=self.connection):
+            Job.objects.using(self.connection).filter(
+                origin=self.name, status=Job.FINISHED, expired_at__lte=times.now()).delete()
+        
     def enqueue_call(self, func, args=None, kwargs=None, timeout=None, result_ttl=None): #noqa
         """Creates a job to represent the delayed function call and enqueues
         it.

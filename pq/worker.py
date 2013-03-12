@@ -13,9 +13,8 @@ import socket
 import signal
 import traceback
 import logging
+from datetime import timedelta
 
-
-import pkg_resources
 from picklefield.fields import PickledObjectField
 from django.db import transaction
 from django.db import models
@@ -280,9 +279,9 @@ class Worker(models.Model):
             try:
                 return PQ.dequeue_any(self.queues, timeout)
             except DequeueTimeout:
-                pass
-
-            self.log.debug('Sending heartbeat to prevent worker timeout.')
+                self.log.debug('Clearing expired jobs from queues.')
+                for q in self.queues:
+                    q.delete_expired_ttl()
 
     def fork_and_perform_job(self, job):
         """Spawns a work horse to perform the actual work and passes it a job.
@@ -351,6 +350,9 @@ class Worker(models.Model):
             job.status = Job.FINISHED
             job.ended_at = times.now()
             job.result_ttl = job.get_ttl(self.default_result_ttl)
+            if job.result_ttl > 0:
+                ttl = timedelta(seconds=job.result_ttl)
+                job.expired_at = job.ended_at + ttl
             if job.result_ttl != 0:
                 job.save()
             else:
