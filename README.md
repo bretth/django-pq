@@ -39,7 +39,7 @@ Consume your queue with a worker.
 
     $ pqworker —burst
      *** Listening for work on default
-     Got count_words_at_url('http://nvie.com') from default
+     Got count_words_at_url('http://python-rq.org') from default
       Job result = 818
      *** Listening for work on default
 
@@ -128,7 +128,7 @@ Work is done through pqworker, a django management command. To accept work on th
 
     $ ./manage.py pqworker high default low
     *** Listening for work on high, default, low
-    Got send_newsletter('me@nvie.com') from default
+    Got send_newsletter('me@example.com') from default
     Job ended normally without result
     *** Listening for work on high, default, low
 
