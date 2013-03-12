@@ -82,8 +82,10 @@ Lets create a queue called ‘slow’ with a 10 minute timeout on jobs (up from 
  Enqueue your jobs in any of the following ways:
 
     slowq.enqueue(say_hello, kwargs=‘You’)
+
     # then with a shorter timeout than 10 minutes
     slowq.enqueue(say_hello, timeout=60)
+
     #Instance methods:
     calc = Calculator(2)
     slowq.enqueue(calc.calculate, args=(4,5))
@@ -91,13 +93,13 @@ Lets create a queue called ‘slow’ with a 10 minute timeout on jobs (up from 
     # with the @job decorator
     from pq.decorators import job
 
-     # decorate the function to be processed by the ‘default’ queue
-     @job(‘default’)
-     def say_hello(name=None):
-            """A job with a single argument and a return value."""
-            if name is None:
-                             name = 'Stranger'
-            return 'Hi there, %s!' % (name,)
+    # decorate the function to be processed by the ‘default’ queue
+    @job(‘default’)
+    def say_hello(name=None):
+        """A job with a single argument and a return value."""
+        if name is None:
+                         name = 'Stranger'
+        return 'Hi there, %s!' % (name,)
 
     # add a job to the queue
     job = add.delay(kwargs=‘friend’)
