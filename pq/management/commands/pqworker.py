@@ -16,6 +16,8 @@ class Command(BaseCommand):
             default=False, help='Run in burst mode (quit after all work is done)'),
         make_option('--name', '-n', default=None, dest='name',
             help='Specify a different name'),
+        make_option('--connection', '-c', action='store', default='default',
+                    help='Report exceptions to this Sentry DSN'),
         make_option('--sentry-dsn', action='store', default=None, metavar='URL',
                     help='Report exceptions to this Sentry DSN'),
     )
@@ -37,7 +39,7 @@ class Command(BaseCommand):
         verbosity = int(options.get('verbosity'))
 
         queues = map(Queue.create, args)
-        w = Worker.create(queues, name=options.get('name'))
+        w = Worker.create(queues, name=options.get('name'), connection=options['connection'])
 
         # Should we configure Sentry?
         if sentry_dsn:
