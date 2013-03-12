@@ -4,7 +4,6 @@ import inspect
 import times
 from picklefield.fields import PickledObjectField
 from django.db import models
-from json_field import JSONField
 
 class Job(models.Model):
 
