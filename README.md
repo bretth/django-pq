@@ -58,10 +58,21 @@ Is syntactic sugar for:
     from  pq.queue import Queue
     queue = Queue.create()
 
-Lets create a queue called ‘slow’ with a 10 minute timeout on jobs (up from the default 3 minutes) that uses a different database from the django ‘default’ db and runs synchronously if DEBUG:
+Some more queue creation examples:
 
+    # name it
+    q = Queue('farqueue')
+
+    # run synchronously when settings.DEBUG == True
     from django.conf import settings
-    slowq = Queue(‘slow’,  600, connection=‘somedb’,  async=settings.DEBUG)
+
+    q = Queue(async=settings.DEBUG)  # Useful to set this to True for tests
+
+    # Up the timeout for slow jobs to 10 minutes
+    q = Queue(timeout=600)
+
+    # Connect to a different settings.DATABASES alias named `happy-db`
+    q = Queue(connection='happy-db')
 
  Define or import a function or class method to enqueue:
 
@@ -235,7 +246,9 @@ Unit testing with nose2 and my nose2django plugin. To run the tests:
     $ pip install -r requirements
     $ nose2
 
-I have been judicious about which tests were ported across from RQ, but hooray for tests. To make it easier to panel beat smashed code django-pq does use setUp as its creator intended.
+I have been judicious about which tests were ported across from RQ, but hooray for tests. To make it easier to panel-beat smashed code django-pq does use setUp as its creator intended.
+
+I intend to stick as closely to the documented RQ api as possible with minimal divergence.
 
 Acknowledgements
 -----------------
