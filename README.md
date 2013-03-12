@@ -174,6 +174,14 @@ More examples:
     $ ./manage.py pqworker default —-sentry-dsn=SENTRY_DSN  # can also do this in settings at SENTRY_DSN
 
 
+To implement a worker in code:
+
+    from pq.worker import Worker
+
+    # note there is no syntactic sugar for Workers
+    w = Worker.create()
+
+
 Monitoring [Not Yet Implemented]
 ---------------------------------
 
@@ -184,6 +192,9 @@ Connections
 
 Django-pq uses the django backend in place of the RQ Redis connections, so you pass in a connection by referring to it's alias in your django DATABASES settings. Surprise surprise we use 'default' if no connection is defined.
 
+    q = Queue(connection='default')
+    w = Worker.create(connection='default')
+
 It was originally intended to use Postgresql specific features in the backend such as asynchronous notifications but that proved more effort than it was worth so other backends that support transactions should work fine. If your backend doesn't support transactions then you should limit the number of workers to 1 to avoid errors.
 
 Exceptions
@@ -191,7 +202,7 @@ Exceptions
 
 Jobs that raise exceptions go to the `failed` queue. You can register a custom handler as per RQ:
 
-    w = Worker([q], exc_handler=my_handler)
+    w = Worker.create([q], exc_handler=my_handler)
 
     def my_handler(job, exc_type, exc_value, traceback):
         # do custom things here
