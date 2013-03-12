@@ -115,7 +115,7 @@ If a job requires more (or less) time to complete, the default timeout period ca
     q.enqueue(func=mytask, args=(foo,), kwargs={'bar': qux}, timeout=600)
 
 
-Completed jobs hang around for a minimum TTL (time to live) of 500 seconds. Since Postgres doesn’t have an expiry option like Redis the worker will periodically poll the database for jobs to delete so the TTL is a minimum TTL. The TTL can be altered per job or through a django setting PQ_DEFAULT_RESULT_TTL.
+Completed jobs hang around for a minimum TTL (time to live) of 500 seconds. Since Postgres doesn’t have an expiry option like Redis the worker will periodically poll the database for jobs to delete hence the minimum TTL. The TTL can be altered per job or through a django setting PQ_DEFAULT_RESULT_TTL.
 
     q.enqueue(func=mytask, result_ttl=0)  # out of my sight immediately
     q.enqueue(func=mytask, result_ttl=86400)  # love you long time
@@ -124,13 +124,13 @@ Completed jobs hang around for a minimum TTL (time to live) of 500 seconds. Sinc
 Workers
 --------
 
-Work is done through pqworker, a django management command. To accept work on the high default low queues:
+Work is done through pqworker, a django management command. To accept work on the fictional `high` `default` `low` queues:
 
     $ ./manage.py pqworker high default low
     *** Listening for work on high, default, low
     Got send_newsletter('me@nvie.com') from default
     Job ended normally without result
-    *** Listening for work on high, normal, low
+    *** Listening for work on high, default, low
 
 If you don’t see any output you might need to configure your django project LOGGING. Here’s an example configuration that will print to the console
 
@@ -170,7 +170,7 @@ More examples:
 
 
     $ ./manage.py pqworker default —name=doug  # change the name from the default hostname
-    $ ./manage.py pqworker default --connection  # use a different database alias instead of default
+    $ ./manage.py pqworker default --connection=[your-db-alias]  # use a different database alias instead of default
     $ ./manage.py pqworker default —-sentry-dsn=SENTRY_DSN  # can also do this in settings at SENTRY_DSN
 
 
@@ -223,9 +223,9 @@ Unit testing with nose2 and my nose2django plugin. To run the tests:
     $ pip install -r requirements
     $ nose2
 
-Have been judicious about which tests were ported across from RQ, but hooray for tests. To make it easier to panel beat smashed code django-pq does use setUp as its creator intended.
+I have been judicious about which tests were ported across from RQ, but hooray for tests. To make it easier to panel beat smashed code django-pq does use setUp as its creator intended.
 
 Acknowledgements
 -----------------
 
-Without RQ (and by extension Vincent Driessen), django-pq would not exist since 90% of the codebase comes from that project. RQ is licensed according the BSD license [here](https://raw.github.com/nvie/rq/master/LICENSE).
+Without RQ (and by extension Vincent Driessen), django-pq would not exist since 90%+ of the codebase comes from that project. RQ is licensed according the BSD license [here](https://raw.github.com/nvie/rq/master/LICENSE).
