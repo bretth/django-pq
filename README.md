@@ -184,6 +184,7 @@ Connections
 
 Django-pq uses the django backend in place of the RQ Redis connections, so you pass in a connection by referring to it's alias in your django DATABASES settings. Surprise surprise we use 'default' if no connection is defined.
 
+It was originally intended to use Postgresql specific features in the backend such as asynchronous notifications but that proved more effort than it was worth so other backends that support transactions should work fine. If your backend doesn't support transactions then you should limit the number of workers to 1 to avoid errors.
 
 Exceptions
 -----------
