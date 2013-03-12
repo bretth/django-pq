@@ -43,7 +43,6 @@ Consume your queue with a worker.
       Job result = 818
      *** Listening for work on default
 
-That’s enough to get started. Lets look in some more detail.
 
 Queues
 ---------
