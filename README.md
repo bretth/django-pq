@@ -79,16 +79,16 @@ Some more queue creation examples:
     def say_hello(name=None):
         """A job with a single argument and a return value."""
         if name is None:
-                         name = 'Stranger'
+            name = 'Stranger'
         return 'Hi there, %s!' % (name,)
 
     class Calculator(object):
         """Test instance methods."""
         def __init__(self, denominator):
-                        self.denominator = denominator
+            self.denominator = denominator
 
         def calculate(self, x, y):
-                return x * y / self.denominator
+            return x * y / self.denominator
 
  Enqueue your jobs in any of the following ways:
 
