@@ -92,14 +92,14 @@ Some more queue creation examples:
 
  Enqueue your jobs in any of the following ways:
 
-    slowq.enqueue(say_hello, kwargs=‘You’)
+    q.enqueue(say_hello, kwargs=‘You’)
 
     # then with a shorter timeout than 10 minutes
-    slowq.enqueue(say_hello, timeout=60)
+    q.enqueue(say_hello, timeout=60)
 
     #Instance methods:
     calc = Calculator(2)
-    slowq.enqueue(calc.calculate, args=(4,5))
+    q.enqueue(calc.calculate, args=(4,5))
 
     # with the @job decorator
     from pq.decorators import job
