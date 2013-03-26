@@ -8,10 +8,9 @@ from django.conf import settings
 from .job import Job
 from .exceptions import DequeueTimeout
 
-PQ_DEFAULT_JOB_TIMEOUT = 180 if not hasattr(
-    settings, 'PQ_DEFAULT_JOB_TIMEOUT') else settings.PQ_DEFAULT_JOB_TIMEOUT
-PQ_POLL_CYCLE = 60 if not hasattr(
-    settings, 'PQ_POLL_CYCLE') else settings.PQ_POLL_CYCLE
+PQ_DEFAULT_JOB_TIMEOUT = getattr(settings, 'PQ_DEFAULT_JOB_TIMEOUT', 180)
+PQ_POLL_CYCLE = getattr(settings, 'PQ_POLL_CYCLE', 60)
+
 
 def get_failed_queue(connection='default'):
     """Returns a handle to the special failed queue."""

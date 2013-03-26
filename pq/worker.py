@@ -34,8 +34,8 @@ green = make_colorizer('darkgreen')
 yellow = make_colorizer('darkyellow')
 blue = make_colorizer('darkblue')
 
-PQ_DEFAULT_WORKER_TTL = 420 if not hasattr(settings, 'PQ_DEFAULT_WORKER_TTL') else settings.PQ_DEFAULT_WORKER_TTL
-PQ_DEFAULT_RESULT_TTL = 500 if not hasattr(settings, 'PQ_DEFAULT_RESULT_TTL') else settings.PQ_DEFAULT_RESULT_TTL
+PQ_DEFAULT_WORKER_TTL = getattr(settings, 'PQ_DEFAULT_WORKER_TTL', 420)
+PQ_DEFAULT_RESULT_TTL = getattr(settings, 'PQ_DEFAULT_RESULT_TTL', 500)
 
 logger = logging.getLogger(__name__)
 
