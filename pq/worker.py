@@ -82,6 +82,7 @@ class Worker(models.Model):
         w._stopped = False
         w.log = logger
         w.failed_queue = get_failed_queue(connection)
+        w._clear_expired = True
 
         # By default, push the "move-to-failed-queue" exception handler onto
         # the stack
@@ -168,7 +169,11 @@ class Worker(models.Model):
 
     def register_death(self):
         """Registers its own death deleting the instance"""
-        self.log.debug('Registering death')
+        if self._clear_expired:
+            self.log.debug('Clearing expired jobs from queues.')
+            for q in self.queues:
+                q.delete_expired_ttl()
+            self.log.debug('Registering death')
         self.delete()
 
     @property
@@ -269,6 +274,7 @@ class Worker(models.Model):
 
 
                 did_perform_work = True
+                self._clear_expired = True
         finally:
             if not self.is_horse:
                 self.register_death()
@@ -279,9 +285,11 @@ class Worker(models.Model):
             try:
                 return PQ.dequeue_any(self.queues, timeout)
             except DequeueTimeout:
-                self.log.debug('Clearing expired jobs from queues.')
-                for q in self.queues:
-                    q.delete_expired_ttl()
+                if self._clear_expired:
+                    self.log.debug('Clearing expired jobs from queues.')
+                    for q in self.queues:
+                        q.delete_expired_ttl()
+                    self._clear_expired = False
 
     def fork_and_perform_job(self, job):
         """Spawns a work horse to perform the actual work and passes it a job.

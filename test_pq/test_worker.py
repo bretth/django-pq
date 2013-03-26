@@ -1,4 +1,5 @@
 import os
+import time
 import times
 from django.test import TransactionTestCase
 from nose2.tools import params
@@ -202,3 +203,17 @@ class TestWorkerSetsResultTTL(TransactionTestCase):
         self.assertEqual(result_ttl, outcome)
 
 
+class TestWorkerDeletesExpiredTTL(TransactionTestCase):
+
+    def setUp(self):
+        self.q = Queue()
+        self.w = Worker.create([self.q])
+        self.job = self.q.enqueue(say_hello, args=('Bob',), result_ttl=1)
+        self.w.work(burst=True)
+
+    def test_worker_deletes_expired_ttl(self):
+        """Ensure that Worker deletes expired jobs"""
+        time.sleep(1)
+        self.w.work(burst=True)
+        with self.assertRaises(Job.DoesNotExist) as exc:
+            rjob = Job.objects.get(id=self.job.id)
