@@ -28,7 +28,7 @@ class Job(models.Model):
     kwargs = PickledObjectField(blank=True)
     description = models.CharField(max_length=254)
     result_ttl = models.IntegerField(null=True, blank=True)
-    status = models.PositiveIntegerField(null=True, blank=True)
+    status = models.PositiveIntegerField(null=True, blank=True, choices=STATUS_CHOICES)
     enqueued_at = models.DateTimeField(null=True, blank=True)
     ended_at = models.DateTimeField(null=True, blank=True)
     expired_at = models.DateTimeField(null=True, blank=True)
