@@ -136,7 +136,6 @@ class Queue(models.Model):
 
         if self._async:
             job.queue_id = self.name
-            job.status = Job.QUEUED
             job.save()
             self.notify(job.id)
 
