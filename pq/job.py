@@ -37,6 +37,13 @@ class Job(models.Model):
     timeout = models.PositiveIntegerField(null=True, blank=True)
     meta = PickledObjectField(blank=True)
 
+    def __unicode__(self):
+        if self.id:
+            return str(self.id)
+        else:
+            return 'Unsaved'
+
+
     @classmethod
     def create(cls, func, args=None, kwargs=None, connection=None,
                result_ttl=None, status=None):

@@ -206,8 +206,6 @@ Django-pq uses the django backend in place of the RQ Redis connections, so you p
     q = Queue(connection='default')
     w = Worker.create(connection='default')
 
-It was originally intended to use Postgresql specific features in the backend such as asynchronous notifications but that proved more effort than it was worth so other backends that support transactions should work fine. If your backend doesn't support transactions then you should limit the number of workers to 1 to avoid errors.
-
 Exceptions
 -----------
 
@@ -233,7 +231,6 @@ All settings are optional. Defaults listed below.
     PQ_DEFAULT_RESULT_TTL = 500  # minumum ttl for jobs
     PQ_DEFAULT_WORKER_TTL = 420  # worker will refresh the connection
     PQ_DEFAULT_JOB_TIMEOUT = 180  # jobs that exceed this time are failed
-    PQ_POLL_CYCLE = 60  # the worker will poll for work every 60 seconds
 
 
 Development

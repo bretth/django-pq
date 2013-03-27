@@ -9,6 +9,9 @@ class InvalidJobOperationError(Exception):
 class NoQueueError(Exception):
     pass
 
+class MulipleQueueConnectionsError(Exception):
+    pass
+
 
 class UnpickleError(Exception):
     def __init__(self, message, raw_data, inner_exception=None):

@@ -16,6 +16,7 @@ import logging
 from datetime import timedelta
 
 from picklefield.fields import PickledObjectField
+from django.db import connections
 from django.db import transaction
 from django.db import models
 from django.conf import settings
@@ -24,7 +25,9 @@ from .queue import Queue as PQ
 from .queue import get_failed_queue
 from .job import Job
 from .utils import make_colorizer
-from .exceptions import NoQueueError, UnpickleError, DequeueTimeout, StopRequested
+from .exceptions import (NoQueueError, UnpickleError,
+                         DequeueTimeout, StopRequested,
+                         MulipleQueueConnectionsError)
 from .timeouts import death_penalty_after
 
 from .version import __version__ as VERSION
@@ -49,6 +52,9 @@ class Worker(models.Model):
     birth = models.DateTimeField(null=True, blank=True)
     expire = models.PositiveIntegerField(null=True, blank=True)
     queue_names = models.CharField(max_length=254, null=True, blank=True)
+
+    def __unicode__(self):
+        return self.name
 
 
     @classmethod
@@ -96,9 +102,14 @@ class Worker(models.Model):
         """Sanity check for the given queues."""
         if not iterable(self.queues):
             raise ValueError('Argument queues not iterable.')
+        connection = None
         for queue in self.queues:
             if not isinstance(queue, PQ):
                 raise NoQueueError('Give each worker at least one Queue.')
+            elif connection and queue.connection != connection:
+                raise MulipleQueueConnectionsError("A worker's queues must use the same connection")
+            connection = queue.connection
+
 
     def get_queue_names(self):
         """Returns the queue names of this worker's queues."""

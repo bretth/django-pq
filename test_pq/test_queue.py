@@ -1,4 +1,5 @@
 import time
+import multiprocessing
 from django.test import TestCase, TransactionTestCase
 
 
@@ -223,13 +224,13 @@ class TestDeleteExpiredTTL(TransactionTestCase):
     def setUp(self):
         q = Queue()
         q.enqueue(say_hello, kwargs={'name':'bob'}, result_ttl=1)  # expires
-        q.enqueue(say_hello, kwargs={'name':'polly'})  # won't expire in this test lifecycle 
+        q.enqueue(say_hello, kwargs={'name':'polly'})  # won't expire in this test lifecycle
         q.enqueue(say_hello, kwargs={'name':'frank'}, result_ttl=-1) # never expires
         w = Worker.create([q])
         w.work(burst=True)
         q.enqueue(say_hello, kwargs={'name':'david'}) # hasn't run yet
         self.q = q
-        
+
     def test_delete_expired_ttl(self):
         time.sleep(1)
         self.q.delete_expired_ttl()
@@ -241,8 +242,72 @@ class TestDequeueTimeout(TransactionTestCase):
     def setUp(self):
         q = Queue()
         self.q = q
-        
+
     def test_dequeue_timeout(self):
         with self.assertRaises(DequeueTimeout):
             PQ.dequeue_any([self.q], timeout=1)
+
+
+class TestListen(TransactionTestCase):
+
+    def test_listen(self):
+        """Postgresql LISTEN on channel with default connection"""
+
+        conn = PQ.listen('default', ['default'])
+        self.assertIsNotNone(conn)
+
+class TestNotify(TransactionTestCase):
+    def setUp(self):
+        self.q = Queue()
+
+    def test_notify(self):
+        """Postgresql NOTIFY on channel with default connection"""
+        self.q.notify(1)
+
+
+class TestListenForJobs(TransactionTestCase):
+    def setUp(self):
+        self.q = Queue()
+        # pre-call this so we don't need to use multi-process
+        # otherwise this is called within the classmethod
+        PQ.listen('default', ['default'])
+        # Fire off a notification of a fake job enqueued
+        self.q.notify(1)
+
+    def test_listen_for_jobs(self):
+        """Test the first part of the _listen_for_jobs method which polls
+        for notifications"""
+        queue_name = PQ._listen_for_jobs(['default'], 'default', 1)
+        self.assertEqual('default', queue_name)
+
+
+class TestListenForJobsSelect(TransactionTestCase):
+
+    def setUp(self):
+        # We'll have to simulate the notify method since there are issues with
+        # sharing database connections with the additional process
+        def fake_job():
+            import psycopg2
+            import psycopg2.extensions
+            time.sleep(1)
+            conn = psycopg2.connect("dbname=test_django-pq user=django-pq")
+            conn.set_isolation_level(psycopg2.extensions.ISOLATION_LEVEL_AUTOCOMMIT)
+
+            curs = conn.cursor()
+            # fake notifying a job_id 2 has been enqueued on the farq
+            curs.execute("SELECT pg_notify(%s, %s);", ('farq', str(2)))
+
+        p = multiprocessing.Process(target=fake_job)
+        p.start()
+
+
+    def test_listen_for_jobs_select(self):
+        """Test the 2nd part of the _listen_for_jobs method which
+        blocks and waits for postgresql to notify it"""
+        queue_name = PQ._listen_for_jobs(['default', 'farq'], 'default', 5)
+        self.assertEqual('farq', queue_name)
+
+
+
+
 

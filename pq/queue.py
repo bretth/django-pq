@@ -1,6 +1,9 @@
+import logging
+import select
 import time
 import times
 
+from django.db import connections
 from django.db import transaction
 from django.db import models
 from django.conf import settings
@@ -9,8 +12,8 @@ from .job import Job
 from .exceptions import DequeueTimeout
 
 PQ_DEFAULT_JOB_TIMEOUT = getattr(settings, 'PQ_DEFAULT_JOB_TIMEOUT', 180)
-PQ_POLL_CYCLE = getattr(settings, 'PQ_POLL_CYCLE', 60)
 
+logger = logging.getLogger(__name__)
 
 def get_failed_queue(connection='default'):
     """Returns a handle to the special failed queue."""
@@ -24,6 +27,9 @@ class Queue(models.Model):
     default_timeout = models.PositiveIntegerField(null=True, blank=True)
     cleaned = models.DateTimeField(null=True, blank=True)
     _async = True
+
+    def __unicode__(self):
+        return self.name
 
     @classmethod
     def create(cls,
@@ -60,7 +66,7 @@ class Queue(models.Model):
         with transaction.commit_on_success(using=self.connection):
             Job.objects.using(self.connection).filter(
                 origin=self.name, status=Job.FINISHED, expired_at__lte=times.now()).delete()
-        
+
     def enqueue_call(self, func, args=None, kwargs=None, timeout=None, result_ttl=None): #noqa
         """Creates a job to represent the delayed function call and enqueues
         it.
@@ -132,6 +138,8 @@ class Queue(models.Model):
             job.queue_id = self.name
             job.status = Job.QUEUED
             job.save()
+            self.notify(job.id)
+
         else:
             job.perform()
             job.save()
@@ -154,6 +162,28 @@ class Queue(models.Model):
         return job
 
     @classmethod
+    def _listen_for_jobs(cls, queue_names, connection_name, timeout):
+        """Get notification from postgresql channels
+        corresponding to queue names
+        """
+
+        conn = cls.listen(connection_name, queue_names)
+
+        while True:
+            for notify in conn.notifies:
+                if not notify.channel in queue_names:
+                    continue
+                conn.notifies.remove(notify)
+                logger.debug('Got job notification %s on queue %s'% (notify.payload, notify.channel))
+                return notify.channel
+            else:
+                r, w, e = select.select([conn], [], [], timeout)
+                if not (r or w or e):
+                    raise DequeueTimeout(timeout)
+                logger.debug('Got data on %s' % (str(r[0])))
+                conn.poll()
+
+    @classmethod
     def dequeue_any(cls, queues, timeout):
         """Helper method, that polls the database queues for new jobs.
         The timeout parameter is interpreted as follows:
@@ -163,27 +193,50 @@ class Queue(models.Model):
         Returns a job instance and a queue
         """
         burst = True if not timeout else False
-        timeout = timeout or 1
         job = None
-        while timeout > 0:
-            for queue in queues:
-                with transaction.commit_on_success(using=queue.connection):
+        # queues must share the same connection - enforced at worker startup
+        conn = queues[0].connection
+        queue_stack = [q.name for q in queues]
+        q_lookup = dict(zip(queue_stack, queues))
+
+        while True:
+            while queue_stack:
+                q_name = queue_stack.pop(0)
+                with transaction.commit_on_success(using=conn):
                     try:
-                        job = Job.objects.using(queue.connection).select_for_update().filter(
-                            queue=queue).order_by('-id')[0]
+                        job = Job.objects.using(conn).select_for_update().filter(
+                            queue_id=q_name).order_by('id')[0]
                         job.queue = None
                         job.save()
-                        return job, queue
+                        return job, q_lookup[q_name]
                     except IndexError:
                         pass
-            if timeout > PQ_POLL_CYCLE:
-                time.sleep(PQ_POLL_CYCLE)
-            timeout -= PQ_POLL_CYCLE
-        if burst:
-            return
-        # If it doesn't complete in timeout then we raise an error
-        # which can be caught by the worker to refresh the connection
-        raise DequeueTimeout(timeout)
+
+            if burst:
+                return
+            q_name = cls._listen_for_jobs(q_lookup.keys(), conn, timeout)
+            queue_stack.append(q_name)
+
+    @classmethod
+    def listen(cls, connection_name, queue_names):
+        conn = connections[connection_name]
+        cursor = conn.cursor()
+        for q_name in queue_names:
+            sql = "LISTEN \"%s\"" % q_name
+            cursor.execute(sql)
+        cursor.close()
+        # Need to return django's wrapped open connection so that
+        # the calling method can use the same session to actually
+        # receive pg notify messages
+        return conn.connection
+
+
+    def notify(self, job_id):
+        """Notify postgresql channel when a job is enqueued"""
+        cursor = connections[self.connection].cursor()
+        cursor.execute("SELECT pg_notify(%s, %s);", (self.name, str(job_id)))
+        cursor.close()
+
 
 class FailedQueue(Queue):
     class Meta:
