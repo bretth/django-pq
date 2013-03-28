@@ -14,6 +14,8 @@ Currently only available through github:
 
     $ pip install https://github.com/bretth/django-pq/zipball/master
 
+You must ensure your Postgresql connections options have autocommit set to True. This is enabled by default beyond Django 1.5 but in 1.5 and earlier you should set it via ``'OPTIONS': {'autocommit': True}`` in your database settings.
+
 Getting started
 ----------------
 
@@ -195,7 +197,6 @@ To implement a worker in code:
     w = Worker.create(q)
     w.work(burst=True)
 
-Workers not in burst mode recycle their connections every ``PQ_DEFAULT_WORKER_TTL`` seconds but block and listen for async notification from postgresql that a job has been enqueued.
 
 Monitoring & Admin
 ----------------------
@@ -210,8 +211,9 @@ Django-pq uses the django backend in place of the RQ Redis connections, so you p
     q = Queue(connection='default')
     w = Worker.create(connection='default')
 
-Workers and queues can be on different connections but workers can only work on multiple queues sharing the same connection.
-The admin connection can be set via ``PQ_ADMIN_CONNECTION``.
+Workers and queues can be on different connections but workers can only work on multiple queues sharing the same connection. Workers not in burst mode recycle their connections every ``PQ_DEFAULT_WORKER_TTL`` seconds but block and listen for async notification from postgresql that a job has been enqueued.
+
+The admin connection for job lists can be set via ``PQ_ADMIN_CONNECTION``.
 
 Exceptions
 -----------
