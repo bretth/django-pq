@@ -248,7 +248,7 @@ Development
 
 Contributions welcome.
 
-Unit testing with nose2 and my nose2django plugin. To run the tests:
+Unit testing with nose2 and my nose2django plugin. To run the tests, clone the repo then:
 
     $ pip install -r requirements
     $ nose2
