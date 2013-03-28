@@ -1,9 +1,9 @@
 django-pq
 ==========
 
-A task queue based on the elegant [RQ](http://python-rq.org) but with a django postgresql backend.
+A task queue based on the elegant [RQ](http://python-rq.org) but with a django postgresql backend, using postgresql's asynchronous notifications to wait for work.
 
-RQ sets a low barrier for entry, and django-pq takes it lower for sites that can’t or don’t want to use Redis in their stack, and are happy to trade off performance for the transactional integrity of Postgres. As additional throughput is required you should be able to switch out or mix django-pq with the more performant Redis based RQ with only trival code changes.
+RQ sets a low barrier for entry, and django-pq takes it lower for sites that can’t or don’t want to use Redis in their stack, and are happy to trade off performance for the transactional integrity of Postgres. As additional throughput is required you should be able to switch out django-pq with the more performant Redis based RQ with only trival code changes.
 
 Django-pq is currently considered alpha quality, and is probably not suitable for production.
 
@@ -188,15 +188,19 @@ More examples:
 To implement a worker in code:
 
     from pq.worker import Worker
+    from pq import Queue
+    q = Queue
 
     # note there is no syntactic sugar for Workers
-    w = Worker.create()
+    w = Worker.create(q)
+    w.work(burst=True)
 
+Workers not in burst mode recycle their connections every ``PQ_DEFAULT_WORKER_TTL`` seconds but block and listen for async notification from postgresql that a job has been enqueued.
 
-Monitoring [Not Yet Implemented]
----------------------------------
+Monitoring & Admin
+----------------------
 
-Jobs, Queues and Workers are monitored through the django admin or the pqinfo command. To cut down some of the overhead of managing workers, they are registered and destroyed on the database but unlike RQ do not store their current state (idle, busy etc).
+Jobs are monitored or administered as necessary through the django admin. Three admin changelist views show queued jobs, failed jobs, and jobs that have been popped from the queue (in progress, finished or orphaned). An admin action allow jobs to be requeued.
 
 Connections
 ------------
@@ -205,6 +209,9 @@ Django-pq uses the django backend in place of the RQ Redis connections, so you p
 
     q = Queue(connection='default')
     w = Worker.create(connection='default')
+
+Workers and queues can be on different connections but workers can only work on multiple queues sharing the same connection.
+The admin connection can be set via ``PQ_ADMIN_CONNECTION``.
 
 Exceptions
 -----------
@@ -231,6 +238,7 @@ All settings are optional. Defaults listed below.
     PQ_DEFAULT_RESULT_TTL = 500  # minumum ttl for jobs
     PQ_DEFAULT_WORKER_TTL = 420  # worker will refresh the connection
     PQ_DEFAULT_JOB_TIMEOUT = 180  # jobs that exceed this time are failed
+    PQ_ADMIN_CONNECTION = 'default'  # the connection to use for the admin
 
 
 Development

@@ -56,7 +56,6 @@ class Worker(models.Model):
     def __unicode__(self):
         return self.name
 
-
     @classmethod
     def all(cls, connection='default'):
         """Returns an iterable of all Workers.

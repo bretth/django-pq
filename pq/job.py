@@ -31,17 +31,14 @@ class Job(models.Model):
     status = models.PositiveIntegerField(null=True, blank=True, choices=STATUS_CHOICES)
     enqueued_at = models.DateTimeField(null=True, blank=True)
     ended_at = models.DateTimeField(null=True, blank=True)
-    expired_at = models.DateTimeField(null=True, blank=True)
+    expired_at = models.DateTimeField('expires', null=True, blank=True)
     result = PickledObjectField()
     exc_info = models.TextField(null=True, blank=True)
     timeout = models.PositiveIntegerField(null=True, blank=True)
     meta = PickledObjectField(blank=True)
 
     def __unicode__(self):
-        if self.id:
-            return str(self.id)
-        else:
-            return 'Unsaved'
+        return self.get_call_string()
 
 
     @classmethod
@@ -99,8 +96,8 @@ class Job(models.Model):
         """Returns a string representation of the call, formatted as a regular
         Python function invocation statement.
         """
-        #if self.func_name is None:
-        #    return None
+        if self.func_name is None:
+            return 'None'
 
         arg_list = [repr(arg) for arg in self.args]
         arg_list += ['%s=%r' % (k, v) for k, v in self.kwargs.items()]
@@ -116,4 +113,19 @@ class Job(models.Model):
     def save(self, *args, **kwargs):
         kwargs.setdefault('using', self.connection)
         super(Job, self).save(*args, **kwargs)
+
+
+class FailedJob(Job):
+    class Meta:
+        proxy = True
+
+
+class QueuedJob(Job):
+    class Meta:
+        proxy = True
+
+
+class DequeuedJob(Job):
+    class Meta:
+        proxy = True
 
