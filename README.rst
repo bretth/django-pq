@@ -42,13 +42,13 @@ Enqueue the function.
 
 Consume your queue with a worker.
 
-.. code-block:: python
+.. code-block:: bash
 
-    $ pqworker —burst
-     *** Listening for work on default
-     Got count_words_at_url('http://python-rq.org') from default
-      Job result = 818
-     *** Listening for work on default
+    $ pqworker --burst
+    *** Listening for work on default
+    Got count_words_at_url('http://python-rq.org') from default
+    Job result = 818
+    *** Listening for work on default
 
 
 Queues
@@ -59,7 +59,7 @@ Since django-pq is uses django models we have one piece of syntactic sugar to ma
 .. code-block:: python
 
     from pq import Queue
-    # create a default queue called ‘default’
+    # create a default queue called 'default'
     queue = Queue()
 
 Is syntactic sugar for:
@@ -84,12 +84,12 @@ Some more queue creation examples:
     # Up the timeout for slow jobs to 10 minutes
     q = Queue(timeout=600)
 
-    # Connect to a different settings.DATABASES alias named `happy-db`
+    # Connect to a different settings.DATABASES alias named 'happy-db'
     q = Queue(connection='happy-db')
 
- Define or import a function or class method to enqueue:
+Define or import a function or class method to enqueue:
 
- .. code-block:: python
+.. code-block:: python
 
     def say_hello(name=None):
         """A job with a single argument and a return value."""
@@ -105,11 +105,11 @@ Some more queue creation examples:
         def calculate(self, x, y):
             return x * y / self.denominator
 
- Enqueue your jobs in any of the following ways:
+Enqueue your jobs in any of the following ways:
 
- .. code-block:: python
+.. code-block:: python
 
-    q.enqueue(say_hello, kwargs=‘You’)
+    q.enqueue(say_hello, kwargs='You')
 
     # then with a shorter timeout than 10 minutes
     q.enqueue(say_hello, timeout=60)
@@ -121,8 +121,8 @@ Some more queue creation examples:
     # with the @job decorator
     from pq.decorators import job
 
-    # decorate the function to be processed by the ‘default’ queue
-    @job(‘default’)
+    # decorate the function to be processed by the 'default' queue
+    @job('default')
     def say_hello(name=None):
         """A job with a single argument and a return value."""
         if name is None:
@@ -130,7 +130,7 @@ Some more queue creation examples:
         return 'Hi there, %s!' % (name,)
 
     # add a job to the queue
-    job = add.delay(kwargs=‘friend’)
+    job = add.delay(kwargs='friend')
 
 Results
 ---------
