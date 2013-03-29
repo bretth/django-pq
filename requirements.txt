@@ -1,2 +1,3 @@
+django
 nose2
--e git+git@github.com:bretth/nose2django.git@master#egg=nose2django
+nose2django
