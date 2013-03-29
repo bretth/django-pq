@@ -52,7 +52,7 @@ class TestWorkViaStringArg(TransactionTestCase):
     def setUp(self):
         self.q = Queue('foo')
         self.w = Worker.create([self.q])
-        self.job = self.q.enqueue('tests.fixtures.say_hello', name='Frank')
+        self.job = self.q.enqueue('test_pq.fixtures.say_hello', name='Frank')
 
     def test_work_via_string_argument(self):
         """Worker processes work fed via string arguments."""
