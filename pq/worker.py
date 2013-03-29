@@ -20,6 +20,7 @@ from django.db import connections
 from django.db import transaction
 from django.db import models
 from django.conf import settings
+from six import u
 
 from .queue import Queue as PQ
 from .queue import get_failed_queue
@@ -385,7 +386,7 @@ class Worker(models.Model):
         if rv is None:
             self.log.info('Job OK')
         else:
-            self.log.info('Job OK, result = %s' % (yellow(unicode(rv)),))
+            self.log.info('Job OK, result = %s' % (yellow(u(rv)),))
 
         if job.result_ttl == 0:
             self.log.info('Result discarded immediately.')

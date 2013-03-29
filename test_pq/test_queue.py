@@ -176,7 +176,7 @@ class TestFQueueQuarantine(TransactionTestCase):
         """Requeueing existing jobs."""
 
         get_failed_queue().quarantine(self.job, Exception('Some fake error'))  # noqa
-        self.assertItemsEqual(PQ.all(), [get_failed_queue()])  # noqa
+        self.assertEqual(sorted(PQ.all()), sorted([get_failed_queue()]))  # noqa
         self.assertEquals(get_failed_queue().count, 1)
 
 

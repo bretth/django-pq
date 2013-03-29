@@ -38,7 +38,7 @@ class Command(BaseCommand):
 
         verbosity = int(options.get('verbosity'))
 
-        queues = map(Queue.create, args)
+        queues = list(map(Queue.create, args))
         w = Worker.create(queues, name=options.get('name'), connection=options['connection'])
 
         # Should we configure Sentry?

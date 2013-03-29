@@ -4,6 +4,7 @@ import inspect
 import times
 from picklefield.fields import PickledObjectField
 from django.db import models
+from six import get_method_self
 
 class Job(models.Model):
 
@@ -57,7 +58,7 @@ class Job(models.Model):
         job.connection = connection
         job.created_at = times.now()
         if inspect.ismethod(func):
-            job.instance = func.im_self
+            job.instance = get_method_self(func)
             job.func_name = func.__name__
         elif inspect.isfunction(func) or inspect.isbuiltin(func):
             job.func_name = '%s.%s' % (func.__module__, func.__name__)

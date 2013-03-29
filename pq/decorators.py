@@ -1,4 +1,7 @@
 from functools import wraps
+
+from six import string_types
+
 from .queue import Queue
 from .worker import PQ_DEFAULT_RESULT_TTL
 
@@ -25,7 +28,7 @@ class job(object):
     def __call__(self, f):
         @wraps(f)
         def delay(*args, **kwargs):
-            if isinstance(self.queue, basestring):
+            if isinstance(self.queue, string_types):
                 queue = Queue.create(name=self.queue, connection=self.connection)
             else:
                 queue = self.queue

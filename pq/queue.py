@@ -7,6 +7,7 @@ from django.db import connections
 from django.db import transaction
 from django.db import models
 from django.conf import settings
+from six import string_types
 
 from .job import Job
 from .exceptions import DequeueTimeout
@@ -94,7 +95,7 @@ class Queue(models.Model):
         * A string, representing the location of a function (must be
           meaningful to the import context of the workers)
         """
-        if not isinstance(f, basestring) and f.__module__ == '__main__':
+        if not isinstance(f, string_types) and f.__module__ == '__main__':
             raise ValueError(
                     'Functions from the __main__ module cannot be processed '
                     'by workers.')
