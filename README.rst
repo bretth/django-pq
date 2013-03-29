@@ -5,6 +5,8 @@ A task queue based on the elegant RQ_ but with a django postgresql backend, usin
 
 RQ sets a low barrier for entry, and django-pq takes it lower for sites that can’t or don’t want to use Redis in their stack, and are happy to trade off performance for the transactional integrity of Postgres. As additional throughput is required you should be able to switch out django-pq with the more performant Redis based RQ with only trival code changes.
 
+Django-pq is tested against Django 1.5, python 2.7, 3.3 with psycopg2 and pypy 2.0 with psycopg2cffi
+
 Installation
 --------------
 
@@ -282,7 +284,7 @@ Development
 
 Contributions welcome.
 
-Unit testing with nose2 and my nose2django plugin. To run the tests, clone the repo then:
+Unit testing with tox, nose2 and my nose2django plugin. To run the tests, clone the repo then:
 
 .. code-block:: bash
 
