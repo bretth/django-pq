@@ -1,4 +1,10 @@
-DEBUG=True
+try:
+    from psycopg2cffi import compat
+    compat.register()
+except ImportError:
+    pass
+
+DEBUG=False
 TEMPLATE=DEBUG
 STATIC_URL = '/static/'
 MEDIA_URL = '/media/'
@@ -44,7 +50,7 @@ LOGGING = {
     'loggers': {
         '': {
             'handlers': ['console'],
-            'level': 'INFO',
+            'level': 'DEBUG',
             'propagate': True
         },
     }

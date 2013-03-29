@@ -290,7 +290,7 @@ class TestListenForJobsSelect(TransactionTestCase):
             import psycopg2
             import psycopg2.extensions
             time.sleep(1)
-            conn = psycopg2.connect("dbname=test_django-pq user=django-pq")
+            conn = psycopg2.connect("dbname=test_django-pq host=localhost user=django-pq")
             conn.set_isolation_level(psycopg2.extensions.ISOLATION_LEVEL_AUTOCOMMIT)
 
             curs = conn.cursor()
