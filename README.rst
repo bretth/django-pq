@@ -1,18 +1,16 @@
 django-pq
 ==========
 
-A task queue based on the elegant [RQ](http://python-rq.org) but with a django postgresql backend, using postgresql's asynchronous notifications to wait for work.
+A task queue based on the elegant RQ_ but with a django postgresql backend, using postgresql's asynchronous notifications to wait for work.
 
 RQ sets a low barrier for entry, and django-pq takes it lower for sites that can’t or don’t want to use Redis in their stack, and are happy to trade off performance for the transactional integrity of Postgres. As additional throughput is required you should be able to switch out django-pq with the more performant Redis based RQ with only trival code changes.
-
-Django-pq is currently considered alpha quality, and is probably not suitable for production.
 
 Installation
 --------------
 
-Currently only available through github:
+.. code-block:: bash
 
-    $ pip install https://github.com/bretth/django-pq/zipball/master
+    $ pip install django-pq
 
 You must ensure your Postgresql connections options have autocommit set to True. This is enabled by default beyond Django 1.5 but in 1.5 and earlier you should set it via ``'OPTIONS': {'autocommit': True}`` in your database settings.
 
@@ -20,6 +18,8 @@ Getting started
 ----------------
 
 If you have used RQ then you’ll know django-pq but lets start with the RQ example.
+
+.. code-block:: python
 
     import requests
 
@@ -29,15 +29,20 @@ If you have used RQ then you’ll know django-pq but lets start with the RQ exam
 
 Create the queue.
 
+.. code-block:: python
+
     from pq import Queue
     q = Queue()
 
 Enqueue the function.
 
+.. code-block:: python
+
     q.enqueue(count_words_at_url, 'http://python-rq.org')
 
-
 Consume your queue with a worker.
+
+.. code-block:: python
 
     $ pqworker —burst
      *** Listening for work on default
@@ -51,16 +56,22 @@ Queues
 
 Since django-pq is uses django models we have one piece of syntactic sugar to maintain compatibility with RQ.
 
+.. code-block:: python
+
     from pq import Queue
     # create a default queue called ‘default’
     queue = Queue()
 
 Is syntactic sugar for:
 
+.. code-block:: python
+
     from  pq.queue import Queue
     queue = Queue.create()
 
 Some more queue creation examples:
+
+.. code-block:: python
 
     # name it
     q = Queue('farqueue')
@@ -78,6 +89,8 @@ Some more queue creation examples:
 
  Define or import a function or class method to enqueue:
 
+ .. code-block:: python
+
     def say_hello(name=None):
         """A job with a single argument and a return value."""
         if name is None:
@@ -93,6 +106,8 @@ Some more queue creation examples:
             return x * y / self.denominator
 
  Enqueue your jobs in any of the following ways:
+
+ .. code-block:: python
 
     q.enqueue(say_hello, kwargs=‘You’)
 
@@ -124,11 +139,15 @@ By default, jobs should execute within 180 seconds. You can alter the default ti
 
 If a job requires more (or less) time to complete, the default timeout period can be loosened (or tightened), by specifying it as a keyword argument to the Queue.enqueue() call, like so:
 
+.. code-block:: python
+
     q = Queue
     q.enqueue(func=mytask, args=(foo,), kwargs={'bar': qux}, timeout=600)
 
 
 Completed jobs hang around for a minimum TTL (time to live) of 500 seconds. Since Postgres doesn’t have an expiry option like Redis the worker will periodically poll the database for jobs to delete hence the minimum TTL. The TTL can be altered per job or through a django setting PQ_DEFAULT_RESULT_TTL.
+
+.. code-block:: python
 
     q.enqueue(func=mytask, result_ttl=0)  # out of my sight immediately
     q.enqueue(func=mytask, result_ttl=86400)  # love you long time
@@ -139,6 +158,8 @@ Workers
 
 Work is done through pqworker, a django management command. To accept work on the fictional `high` `default` `low` queues:
 
+.. code-block:: bash
+
     $ ./manage.py pqworker high default low
     *** Listening for work on high, default, low
     Got send_newsletter('me@example.com') from default
@@ -147,8 +168,10 @@ Work is done through pqworker, a django management command. To accept work on th
 
 If you don’t see any output you might need to configure your django project LOGGING. Here’s an example configuration that will print to the console
 
+.. code-block:: python
+
     LOGGING = {
-    	'version': 1,
+        'version': 1,
         'disable_existing_loggers': True,
         'formatters': {
             'standard': {
@@ -177,10 +200,13 @@ Queue priority is in the order they are listed, so if the worker never finishes 
 
 To exit after all work is consumed:
 
+.. code-block:: bash
+
     $ ./manage.py pqworker default —burst
 
 More examples:
 
+.. code-block:: bash
 
     $ ./manage.py pqworker default —name=doug  # change the name from the default hostname
     $ ./manage.py pqworker default --connection=[your-db-alias]  # use a different database alias instead of default
@@ -188,6 +214,8 @@ More examples:
 
 
 To implement a worker in code:
+
+.. code-block:: python
 
     from pq.worker import Worker
     from pq import Queue
@@ -208,6 +236,8 @@ Connections
 
 Django-pq uses the django backend in place of the RQ Redis connections, so you pass in a connection by referring to it's alias in your django DATABASES settings. Surprise surprise we use 'default' if no connection is defined.
 
+.. code-block:: python
+
     q = Queue(connection='default')
     w = Worker.create(connection='default')
 
@@ -219,6 +249,8 @@ Exceptions
 -----------
 
 Jobs that raise exceptions go to the `failed` queue. You can register a custom handler as per RQ:
+
+.. code-block:: python
 
     w = Worker.create([q], exc_handler=my_handler)
 
@@ -236,6 +268,8 @@ Settings
 
 All settings are optional. Defaults listed below.
 
+.. code-block:: python
+
     SENTRY_DSN  # as per sentry
     PQ_DEFAULT_RESULT_TTL = 500  # minumum ttl for jobs
     PQ_DEFAULT_WORKER_TTL = 420  # worker will refresh the connection
@@ -250,6 +284,8 @@ Contributions welcome.
 
 Unit testing with nose2 and my nose2django plugin. To run the tests, clone the repo then:
 
+.. code-block:: bash
+
     $ pip install -r requirements
     $ nose2
 
@@ -260,4 +296,7 @@ I intend to stick as closely to the documented RQ api as possible with minimal d
 Acknowledgements
 -----------------
 
-Without RQ (and by extension Vincent Driessen), django-pq would not exist since 90%+ of the codebase comes from that project. RQ is licensed according the BSD license [here](https://raw.github.com/nvie/rq/master/LICENSE).
+Without RQ (and by extension Vincent Driessen), django-pq would not exist since 90%+ of the codebase comes from that project. RQ_ is licensed according the BSD license here_.
+
+.. _RQ: http://python-rq.org
+.. _here: https://raw.github.com/nvie/rq/master/LICENSE
