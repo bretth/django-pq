@@ -7,6 +7,8 @@ RQ sets a low barrier for entry, and django-pq takes it lower for sites that can
 
 Django-pq is tested against Django 1.5, python 2.7, 3.3 with psycopg2 and pypy 2.0 with psycopg2cffi
 
+Source repository at https://github.com/bretth/django-pq_.
+
 Installation
 --------------
 
@@ -300,5 +302,6 @@ Acknowledgements
 
 Without RQ (and by extension Vincent Driessen), django-pq would not exist since 90%+ of the codebase comes from that project. RQ_ is licensed according the BSD license here_.
 
+.. _https://github.com/bretth/django-pq: https://github.com/bretth/django-pq
 .. _RQ: http://python-rq.org
 .. _here: https://raw.github.com/nvie/rq/master/LICENSE
