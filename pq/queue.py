@@ -68,6 +68,10 @@ class Queue(models.Model):
             Job.objects.using(self.connection).filter(
                 origin=self.name, status=Job.FINISHED, expired_at__lte=times.now()).delete()
 
+    def empty(self):
+        """Delete all jobs from a queue"""
+        Job.objects.using(self.connection).filter(queue_id=self.name).delete()
+
     def enqueue_call(self, func, args=None, kwargs=None, timeout=None, result_ttl=None): #noqa
         """Creates a job to represent the delayed function call and enqueues
         it.
