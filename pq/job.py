@@ -33,7 +33,7 @@ class Job(models.Model):
     enqueued_at = models.DateTimeField(null=True, blank=True)
     ended_at = models.DateTimeField(null=True, blank=True)
     expired_at = models.DateTimeField('expires', null=True, blank=True)
-    result = PickledObjectField()
+    result = PickledObjectField(null=True, blank=True)
     exc_info = models.TextField(null=True, blank=True)
     timeout = models.PositiveIntegerField(null=True, blank=True)
     meta = PickledObjectField(blank=True)
