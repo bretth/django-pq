@@ -58,7 +58,7 @@ Consume your queue with a worker.
 Queues
 ---------
 
-Since django-pq is uses django models we have one piece of syntactic sugar to maintain compatibility with RQ.
+Since django-pq uses django models we have one piece of syntactic sugar to maintain compatibility with RQ.
 
 .. code-block:: python
 
@@ -160,7 +160,7 @@ Completed jobs hang around for a minimum TTL (time to live) of 500 seconds. Sinc
 Workers
 --------
 
-Work is done through pqworker, a django management command. To accept work on the fictional `high` `default` `low` queues:
+Work is done through pqworker, a django management command. To accept work on the fictional ``high``, ``default``, and `low` queues:
 
 .. code-block:: bash
 
@@ -212,9 +212,9 @@ More examples:
 
 .. code-block:: bash
 
-    $ ./manage.py pqworker default —name=doug  # change the name from the default hostname
+    $ ./manage.py pqworker default --name=doug  # change the name from the default hostname
     $ ./manage.py pqworker default --connection=[your-db-alias]  # use a different database alias instead of default
-    $ ./manage.py pqworker default —-sentry-dsn=SENTRY_DSN  # can also do this in settings at SENTRY_DSN
+    $ ./manage.py pqworker default --sentry-dsn=SENTRY_DSN  # can also do this in settings at SENTRY_DSN
 
 
 To implement a worker in code:
@@ -226,6 +226,7 @@ To implement a worker in code:
     q = Queue
 
     # note there is no syntactic sugar for Workers
+    # django-pq uses a create method instead
     w = Worker.create(q)
     w.work(burst=True)
 
@@ -233,12 +234,12 @@ To implement a worker in code:
 Monitoring & Admin
 ----------------------
 
-Jobs are monitored or administered as necessary through the django admin. Three admin changelist views show queued jobs, failed jobs, and jobs that have been popped from the queue (in progress, finished or orphaned). An admin action allow jobs to be requeued.
+Jobs are monitored or administered as necessary through the django admin. Three admin changelist views show queued jobs, failed jobs, and jobs that have been popped from the queue (in progress, finished or orphaned). Admin actions allow jobs to be requeued or deleted.
 
 Connections
 ------------
 
-Django-pq uses the django backend in place of the RQ Redis connections, so you pass in a connection by referring to it's alias in your django DATABASES settings. Surprise surprise we use 'default' if no connection is defined.
+Django-pq uses the django postgresql backend in place of the RQ Redis connections, so you pass in a connection by referring to it's alias in your django DATABASES settings. Surprise surprise we use 'default' if no connection is defined.
 
 .. code-block:: python
 
@@ -252,7 +253,7 @@ The admin connection for job lists can be set via ``PQ_ADMIN_CONNECTION``.
 Exceptions
 -----------
 
-Jobs that raise exceptions go to the `failed` queue. You can register a custom handler as per RQ:
+Jobs that raise exceptions go to the ``failed`` queue. You can register a custom handler as per RQ:
 
 .. code-block:: python
 
@@ -300,7 +301,7 @@ To guage rough performance a pqbenchmark management command is included that is 
     # If rq/redis is installed you can compare.
     $ django-admin.py pqbenchmark 50000 -w4 --sleep=250 --backend=rq
 
-On a Macbook Pro 2.6Ghz i7 with 8GB ram and 256 GB flash drive I get the following jobs per second throughput with Postresapp (9.2.2.0), Redis Server (2.6.11) with 100,000 enqueued jobs on default settings. For pypy the psycopg2cffi driver is used:
+While the benchmark is not designed to measure hair splitting performance, on a Macbook Pro 2.6Ghz i7 with 8GB ram and 256 GB flash drive I get the following jobs per second throughput with Postresapp (9.2.2.0), Redis Server (2.6.11) with 100,000 enqueued jobs on default settings. For pypy the psycopg2cffi driver is used:
 
 +-----------+-----------+-----------+-----------+-----------+
 | Workers   | PQ-Py2.7  | PQ-Py3.3  | PQ-PyPy2.0| RQ-Py2.7  |
@@ -316,7 +317,7 @@ On a Macbook Pro 2.6Ghz i7 with 8GB ram and 256 GB flash drive I get the followi
 
 As you can see from the numbers RQ is a far better choice for higher volumes of cheap tasks. There is also only a small penalty for using PQ on Python 3. Note, the PyPy numbers no doubt reflect the experimental status of the psycopg2cffi driver.  
 
-Simulating a modest task that has a 50ms overhead.
+Simulating a modest task that has a 50ms overhead:
 
 +-----------+-----------+-----------+
 | Workers   | PQ-Py2.7  | RQ-Py2.7  |
@@ -330,7 +331,7 @@ Simulating a modest task that has a 50ms overhead.
 | 6         | 70        | 99        |
 +-----------+-----------+-----------+
 
-Simulating a slow task that has 250ms overhead.
+Simulating a slow task that has 250ms overhead:
 
 +-----------+-----------+-----------+
 | Workers   | PQ-Py2.7  | RQ-Py2.7  |
@@ -348,7 +349,7 @@ Simulating a slow task that has 250ms overhead.
 | 20        | 70.2      | 75.9      |
 +-----------+-----------+-----------+
 
-Once your tasks get out to 250ms and beyond the differences between PQ and RQ become much more marginal. The important factor here are the tasks themselves, and how well your backend scales to the number of connections if you want to scale the number of workers. If you needed to scale your workers beyond 20 connections regularly then congratulations, you probably want to use something else anyway. 
+Once your tasks get out to 250ms and beyond the differences between PQ and RQ become much more marginal. The important factor here are the tasks themselves, and how well your backend scales to the number of connections if you want to scale the number of workers. If you needed to scale your workers beyond 20 connections regularly then I don't know why you'd want to use django-pq.
 
 Development & Issues
 ---------------------
