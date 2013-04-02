@@ -3,7 +3,7 @@ django-pq
 
 A task queue based on the elegant RQ_ but with a django postgresql backend, using postgresql's asynchronous notifications to wait for work.
 
-RQ sets a low barrier for entry, and django-pq takes it lower for sites that can’t or don’t want to use Redis in their stack, and are happy to trade off performance for the transactional integrity of Postgres. As additional throughput is required you should be able to switch out django-pq with the more performant Redis based RQ with only trival code changes.
+RQ sets a low barrier for entry, and django-pq takes it lower for sites that can’t or don’t want to use Redis in their stack. By using django-pq you are trading off throughput on cheap tasks for the transactional integrity of Postgresql. For tasks that are expected to complete in a few milliseconds or less such as internal messaging you can expect RQ to be at least 2.5x faster than django-pq. For expensive tasks taking 1/2 a second or more to complete the throughput of RQ and django-pq will be about the same. As such, django-pq is suitable for very low volume messaging or slow running task applications (see benchmarks below).
 
 Django-pq is tested against Django 1.5, python 2.7, 3.3 with psycopg2 and pypy 2.0 with psycopg2cffi
 
@@ -280,11 +280,80 @@ All settings are optional. Defaults listed below.
     PQ_DEFAULT_JOB_TIMEOUT = 180  # jobs that exceed this time are failed
     PQ_ADMIN_CONNECTION = 'default'  # the connection to use for the admin
 
+Benchmarks & other lies
+-------------------------
 
-Development
-------------
+To guage rough performance a pqbenchmark management command is included that is designed to test worker throughput while jobs are being enqueued. The command will execute the funtion ``do_nothing``  a number of times and simultaneously spawn workers to consume the benchmark queue. After enqueing is completed a count is taken of the number of jobs remaining and an approximate number of jobs/s is calculated. There are a number of factors you can adjust to simulate your load. For example:
 
-Contributions welcome.
+.. code-block:: bash
+
+    # Simulate trivial tasks with default settings. 
+    # Useful for comparing raw backend overhead.
+    # 100,000 jobs and 1 worker.
+    $ django-admin.py pqbenchmark 
+
+    # Simulate a slower running task.
+    # Useful for seeing how many workers you can put on a task
+    # Enqueue 50000 jobs with 4 workers and a 250 millisecond job execution time:
+    $ django-admin.py pqbenchmark 50000 -w4 --sleep=250  
+
+    # If rq/redis is installed you can compare.
+    $ django-admin.py pqbenchmark 50000 -w4 --sleep=250 --backend=rq
+
+On a Macbook Pro 2.6Ghz i7 with 8GB ram and 256 GB flash drive I get the following jobs per second throughput with Postresapp (9.2.2.0), Redis Server (2.6.11) with 100,000 enqueued jobs on default settings. For pypy the psycopg2cffi driver is used:
+
++-----------+-----------+-----------+-----------+-----------+
+| Workers   | PQ-Py2.7  | PQ-Py3.3  | PQ-PyPy2.0| RQ-Py2.7  |
++===========+===========+===========+===========+===========+
+| 1         | 55        | 52        | 36        | 158       |
++-----------+-----------+-----------+-----------+-----------+
+| 2         | 92        | 91        | 62        | 256       |
++-----------+-----------+-----------+-----------+-----------+
+| 4         | 138       | 134       | 99        | 362       |
++-----------+-----------+-----------+-----------+-----------+
+| 6         | 148       | 144       | 116       | 399       |
++-----------+-----------+-----------+-----------+-----------+
+
+As you can see from the numbers RQ is a far better choice for higher volumes of cheap tasks. There is also only a small penalty for using PQ on Python 3. Note, the PyPy numbers no doubt reflect the experimental status of the psycopg2cffi driver.  
+
+Simulating a modest task that has a 50ms overhead.
+
++-----------+-----------+-----------+
+| Workers   | PQ-Py2.7  | RQ-Py2.7  |
++===========+===========+===========+
+| 1         | 12        | 17        |
++-----------+-----------+-----------+
+| 2         | 27        | 34        |
++-----------+-----------+-----------+
+| 4         | 50        | 66        |
++-----------+-----------+-----------+
+| 6         | 70        | 99        |
++-----------+-----------+-----------+
+
+Simulating a slow task that has 250ms overhead.
+
++-----------+-----------+-----------+
+| Workers   | PQ-Py2.7  | RQ-Py2.7  |
++===========+===========+===========+
+| 1         | 3.3       | 3.9       |
++-----------+-----------+-----------+
+| 2         | 7.3       | 7.8       |
++-----------+-----------+-----------+
+| 4         | 14.6      | 15.3      |
++-----------+-----------+-----------+
+| 6         | 19.9      | 22.8      |
++-----------+-----------+-----------+
+| 10        | 33.5      | 37.6      |
++-----------+-----------+-----------+
+| 20        | 70.2      | 75.9      |
++-----------+-----------+-----------+
+
+Once your tasks get out to 250ms and beyond the differences between PQ and RQ become much more marginal. The important factor here are the tasks themselves, and how well your backend scales to the number of connections if you want to scale the number of workers. If you needed to scale your workers beyond 20 connections regularly then congratulations, you probably want to use something else anyway. 
+
+Development & Issues
+---------------------
+
+Contributions, questions and issues welcome on github.
 
 Unit testing with tox, nose2 and my nose2django plugin. To run the tests, clone the repo then:
 
