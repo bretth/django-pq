@@ -47,6 +47,18 @@ logger = logging.getLogger(__name__)
 def iterable(x):
     return hasattr(x, '__iter__')
 
+_signames = dict((getattr(signal, signame), signame) \
+                    for signame in dir(signal) \
+                    if signame.startswith('SIG') and '_' not in signame)
+
+def signal_name(signum):
+    # Hackety-hack-hack: is there really no better way to reverse lookup the
+    # signal name?  If you read this and know a way: please provide a patch :)
+    try:
+        return _signames[signum]
+    except KeyError:
+        return 'SIG_UNKNOWN'
+
 class Worker(models.Model):
 
     name = models.CharField(max_length=254, primary_key=True)
@@ -102,10 +114,12 @@ class Worker(models.Model):
         """Sanity check for the given queues."""
         if not iterable(self.queues):
             raise ValueError('Argument queues not iterable.')
+        elif not len(self.queues):
+            raise NoQueueError('Give each worker at least one Queue.')
         connection = None
         for queue in self.queues:
             if not isinstance(queue, PQ):
-                raise NoQueueError('Give each worker at least one Queue.')
+                raise NoQueueError('%s is not a valid Queue.' % str(queue))
             elif connection and queue.connection != connection:
                 raise MulipleQueueConnectionsError("A worker's queues must use the same connection")
             connection = queue.connection
@@ -204,7 +218,7 @@ class Worker(models.Model):
             # Take down the horse with the worker
             if self.horse_pid:
                 msg = 'Taking down horse %d with me.' % self.horse_pid
-                self.log.debug(msg)
+                self.log.warning(msg)
                 try:
                     os.kill(self.horse_pid, signal.SIGKILL)
                 except OSError as e:
@@ -225,7 +239,6 @@ class Worker(models.Model):
 
             msg = 'Warm shut down requested.'
             self.log.warning(msg)
-
             # If shutdown is requested in the middle of a job, wait until
             # finish before shutting down
             if self.state == 'busy':
