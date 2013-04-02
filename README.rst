@@ -284,7 +284,7 @@ All settings are optional. Defaults listed below.
 Benchmarks & other lies
 -------------------------
 
-To guage rough performance a pqbenchmark management command is included that is designed to test worker throughput while jobs are being enqueued. The command will execute the funtion ``do_nothing``  a number of times and simultaneously spawn workers to consume the benchmark queue. After enqueing is completed a count is taken of the number of jobs remaining and an approximate number of jobs/s is calculated. There are a number of factors you can adjust to simulate your load. For example:
+To gauge rough performance a pqbenchmark management command is included that is designed to test worker throughput while jobs are being enqueued. The command will execute the function ``do_nothing``  a number of times and simultaneously spawn workers to consume the benchmark queue. After enqueing is completed a count is taken of the number of jobs remaining and an approximate number of jobs/s is calculated. There are a number of factors you can adjust to simulate your load, and as a bonus it can test RQ. For example:
 
 .. code-block:: bash
 
