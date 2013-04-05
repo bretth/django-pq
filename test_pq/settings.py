@@ -6,6 +6,7 @@ except ImportError:
 
 DEBUG=False
 TEMPLATE=DEBUG
+USE_TZ = True
 STATIC_URL = '/static/'
 MEDIA_URL = '/media/'
 
@@ -50,7 +51,7 @@ LOGGING = {
     'loggers': {
         '': {
             'handlers': ['console'],
-            'level': 'DEBUG',
+            'level': 'CRITICAL',
             'propagate': True
         },
     }
