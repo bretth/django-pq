@@ -3,7 +3,7 @@ import os
 import errno
 import random
 import time
-import times
+
 try:
     from procname import setprocname
 except ImportError:
@@ -16,10 +16,9 @@ import logging
 from datetime import timedelta
 
 from picklefield.fields import PickledObjectField
-from django.db import connections
-from django.db import transaction
-from django.db import models
+from django.db import connections, models, transaction
 from django.conf import settings
+from django.utils.timezone import now
 from six import u
 
 from .queue import Queue as PQ
@@ -187,7 +186,7 @@ class Worker(models.Model):
                         'There exists an active worker named \'%s\' '
                         'already.' % (self.calculated_name,))
             self.name = self.calculated_name
-            self.birth = times.now()
+            self.birth = now()
             self.queue_names = ','.join(self.get_queue_names())
             self.expire = self.default_worker_ttl
             self.save()
@@ -378,7 +377,7 @@ class Worker(models.Model):
             # use the same exc handling when pickling fails
             job.result = rv
             job.status = Job.FINISHED
-            job.ended_at = times.now()
+            job.ended_at = now()
             job.result_ttl = job.get_ttl(self.default_result_ttl)
             if job.result_ttl > 0:
                 ttl = timedelta(seconds=job.result_ttl)
