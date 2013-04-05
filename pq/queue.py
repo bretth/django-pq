@@ -21,6 +21,25 @@ def get_failed_queue(connection='default'):
     return FailedQueue.create(connection=connection)
 
 
+class _EnqueueArgs(object):
+    """Simple argument and keyword argument wrapper
+        for enqueue and schedule queue methods
+    """ 
+    def __init__(self, *args, **kwargs):
+        self.timeout = None
+        self.result_ttl = None
+        self.args = args
+        self.kwargs = kwargs
+        # Detect explicit invocations, i.e. of the form:
+        #  q.enqueue(foo, args=(1, 2), kwargs={'a': 1}, timeout=30)
+        if 'args' in kwargs or 'kwargs' in kwargs:
+            assert args == (), 'Extra positional arguments cannot be used when using explicit args and kwargs.'  # noqa
+            self.result_ttl = kwargs.pop('result_ttl', None)
+            self.timeout = kwargs.pop('timeout', None)
+            self.args = kwargs.pop('args', None)
+            self.kwargs = kwargs.pop('kwargs', None)
+
+
 class Queue(models.Model):
 
     connection = None
@@ -103,20 +122,10 @@ class Queue(models.Model):
             raise ValueError(
                     'Functions from the __main__ module cannot be processed '
                     'by workers.')
+        enq = _EnqueueArgs(*args, **kwargs)
 
-        # Detect explicit invocations, i.e. of the form:
-        #     q.enqueue(foo, args=(1, 2), kwargs={'a': 1}, timeout=30)
-        timeout = None
-        result_ttl = None
-        if 'args' in kwargs or 'kwargs' in kwargs:
-            assert args == (), 'Extra positional arguments cannot be used when using explicit args and kwargs.'  # noqa
-            timeout = kwargs.pop('timeout', None)
-            args = kwargs.pop('args', None)
-            result_ttl = kwargs.pop('result_ttl', None)
-            kwargs = kwargs.pop('kwargs', None)
-
-        return self.enqueue_call(func=f, args=args, kwargs=kwargs,
-                                 timeout=timeout, result_ttl=result_ttl)
+        return self.enqueue_call(func=f, args=enq.args, kwargs=enq.kwargs,
+                                 timeout=enq.timeout, result_ttl=enq.result_ttl)
 
     def enqueue_job(self, job, timeout=None, set_meta_data=True):
         """Enqueues a job for delayed execution.
