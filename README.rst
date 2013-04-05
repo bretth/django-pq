@@ -148,7 +148,7 @@ A serial queue exists which soft locks the queue for the task being performed. A
 
     sq = SerialQueue('serial')
 
-
+Serial queues are not in RQ.
 
 Scheduling
 -----------
@@ -162,7 +162,7 @@ Tasks can be scheduled at specific times, repeated at intervals, repeated until 
     from datetime import datetime
 
     # you should use timezone aware dates if you have USE_TZ=True
-    future = datetime(2014,01,01, tzinfo=utc)
+    future = datetime(2014,1,1, tzinfo=utc)
     q = Queue()
 
     # The simple enqueue like call
@@ -178,7 +178,9 @@ Tasks can be scheduled at specific times, repeated at intervals, repeated until 
     q.schedule_call(now(), say_hello, args=('groundhog day',), repeat=-1, interval=60*60*24) 
 
     # ensure the schedule falls within a time range
-    q.schedule_call(now(), say_hello, args=('groundhog day',), repeat=-1, interval=60*60*24, between='2:00/18:30')  # could also use variants '2-18.30' 
+    q.schedule_call(now(), say_hello, args=('groundhog day',), 
+        repeat=-1, interval=60*60*24, between='2:00/18:30') 
+     # could also use variants like '2.00-18.30' or '2-18:30'
 
     ## repeat on timedelta or relativedelta instances
 
@@ -196,7 +198,7 @@ Tasks can be scheduled at specific times, repeated at intervals, repeated until 
     q.schedule_call(dt, say_hello, args=('groundhog day',), repeat=until, interval=monthly)
 
 
-Note: Scheduling is not currently in RQ so the api may change.
+Scheduling is a proposed feature of RQ so the api may change.
 
 
 Results
@@ -223,7 +225,7 @@ Completed jobs hang around for a minimum TTL (time to live) of 500 seconds. Sinc
 Workers
 --------
 
-Work is done through pqworker, a django management command. To accept work on the fictional ``high``, ``default``, and `low` queues:
+Work is done through pqworker, a django management command. To accept work on the fictional ``high``, ``default``, and ``low`` queues:
 
 .. code-block:: bash
 
@@ -348,7 +350,7 @@ All settings are optional. Defaults listed below.
 Benchmarks & other lies
 -------------------------
 
-To gauge rough performance a ``pqbenchmark`` management command is included that is designed to test worker throughput while jobs are being enqueued. The command will enqueue the function ``do_nothing`` a number of times and simultaneously spawn workers to consume the benchmark queue. After enqueing is completed a count is taken of the number of jobs remaining and an approximate number of jobs/s is calculated. There are a number of factors you can adjust to simulate your load, and as a bonus it can test RQ. For example:
+To gauge rough performance a ``pqbenchmark`` management command is included that is designed to test worker throughput while jobs are being enqueued. The command will enqueue the function ``do_nothing`` a number of times and simultaneously spawn workers to consume the benchmark queue. After enqueuing is completed a count is taken of the number of jobs remaining and an approximate number of jobs/s is calculated. There are a number of factors you can adjust to simulate your load, and as a bonus it can test RQ. For example:
 
 .. code-block:: bash
 
@@ -399,7 +401,7 @@ Simulating a slow task that has 250ms overhead:
 | 20        | 70.2      | 75.9      |
 +-----------+-----------+-----------+
 
-Once your tasks get out to 250ms and beyond the differences between PQ and RQ become much more marginal. The important factor here are the tasks themselves, and how well your backend scales in memory usage and IO to the number of connections if you want to scale the number of workers. Obviously again the quasi-persistent RQ is going to scale better given enough memory. 
+Once your tasks get out to 250ms and beyond the differences between PQ and RQ become much more marginal. The important factor here are the tasks themselves, and how well your backend scales in memory usage and IO to the number of connections if you want to scale the number of workers. Obviously again the quasi-persistent RQ is going to scale better than your average disk bound postgresql installation. 
 
 Development & Issues
 ---------------------
@@ -420,7 +422,7 @@ I intend to stick as closely to the documented RQ api as possible with minimal d
 Acknowledgements
 -----------------
 
-Without RQ (and by extension Vincent Driessen), django-pq would not exist since 90%+ of the codebase comes from that project. RQ_ is licensed according the BSD license here_.
+Without RQ (and by extension Vincent Driessen), django-pq would not exist since a fair slab of the codebase comes from that project. RQ_ is licensed according the BSD license here_.
 
 .. _https://github.com/bretth/django-pq: https://github.com/bretth/django-pq
 .. _RQ: http://python-rq.org
