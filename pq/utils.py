@@ -6,10 +6,13 @@ The formatter for ANSI colored console output is heavily based on Pygments
 terminal colorizing code, originally by Georg Brandl.
 """
 import os
+import re
 import sys
 import logging
+from datetime import timedelta, datetime, time
 
 from .compat import is_python_version
+from .exceptions import InvalidBetween
 
 
 def gettermsize():
@@ -35,6 +38,56 @@ def gettermsize():
         except:
             cr = (25, 80)
     return int(cr[1]), int(cr[0])
+
+def get_restricted_datetime(at, between=''):
+    """
+    Returns a new datetime that always falls in 
+    the timerange ``between`` an iso 8601 string or variant.
+
+    If the time part of the datetime falls before the
+    timerange the datetime will be moved forward to the
+    start of the range. In the event the time is after the
+    range the datetime will be moved forward to the next
+    day. 
+
+    >>> dt = datetime(2013,1,1,6,30)
+    >>> get_restricted_datetime(dt, '7-12')
+    datetime(2013,1,1,7)
+    >>> get_restricted_datetime(dt, '1:00/6:00')
+    datetime(2013,1,2,1)
+    >>> get_restricted_datetime(dt, '1:00-6:00')
+    datetime(2013,1,2,1)
+    >>> get_restricted_datetime(dt, '1:00:10/6:00:59')
+    datetime(2013,1,2,1)
+    """
+    pattern = re.compile(
+        r"(\d{1,2})[:.]?(\d{0,2})[:.]?\d{0,2}\s*[/-]+" +
+        r"\s*(\d{1,2})[:.]?(\d{0,2})[:.]?\d{0,2}"
+        )
+    r = pattern.search(between)
+    if not r:
+        raise InvalidBetween("Invalid between range %s" % between)
+
+    shour, smin, ehour, emin = r.groups()
+    shour = int(shour)
+    smin = int(smin) if smin else 0
+    ehour = int(ehour)
+    emin = int(emin) if emin else 0
+    if ehour < shour:
+        raise InvalidBetween("Between end cannot be before start")
+    elif ehour == 24:
+        ehour = 23
+        emin = 59
+    st = time(shour, smin, tzinfo=at.tzinfo)
+    et = time(ehour, emin, tzinfo=at.tzinfo)
+    date = at.date()
+    compare_st = datetime.combine(date, st)
+    compare_et = datetime.combine(date, et)
+    if at < compare_st:
+        at = compare_st
+    elif at > compare_et:
+        at = compare_st + timedelta(days=1)
+    return at
 
 
 class _Colorizer(object):
