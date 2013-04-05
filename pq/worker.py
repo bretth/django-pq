@@ -289,8 +289,6 @@ class Worker(models.Model):
                 self.state = 'busy'
 
                 job, queue = result
-                job.status = Job.STARTED
-                job.save()
                 self.log.info('%s: %s (%s)' % (green(queue.name),
                     blue(job.description), job.id))
 
