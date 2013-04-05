@@ -1,5 +1,7 @@
 import time
 import multiprocessing
+from datetime import datetime, timedelta
+from django.utils.timezone import utc, now
 from django.test import TestCase, TransactionTestCase
 
 
@@ -10,7 +12,8 @@ from pq.job import Job
 from pq.worker import Worker
 from pq.exceptions import DequeueTimeout
 
-from .fixtures import say_hello, Calculator, div_by_zero, some_calculation
+from .fixtures import (say_hello, Calculator, 
+    div_by_zero, some_calculation, do_nothing)
 
 class TestQueueCreation(TransactionTestCase):
 
@@ -308,6 +311,59 @@ class TestListenForJobsSelect(TransactionTestCase):
         self.assertEqual('farq', queue_name)
 
 
+class TestScheduleJobs(TransactionTestCase):
 
+    def setUp(self):
+        self.q = Queue()
+        self.w = Worker.create([self.q])
+
+    def test_shedule_call(self):
+        """Schedule to fire now"""
+        job = self.q.schedule_call(now(), do_nothing)
+        self.w.work(burst=True)
+        with self.assertRaises(Job.DoesNotExist) as exc:
+            Job.objects.get(queue_id='default', pk=job.id)
+
+    def test_schedule_future_call(self):
+        """Schedule to fire in the distant future"""
+        job = self.q.schedule_call(datetime(2999,12,1, tzinfo=utc), do_nothing)
+        self.w.work(burst=True)
+        # check it is still in the queue
+        self.assertIsNotNone(Job.objects.get(queue_id='default', pk=job.id))
+
+class TestEnqueueNext(TransactionTestCase):
+
+    def setUp(self):
+        self.q = Queue()
+        self.job = Job.create(func=some_calculation, 
+            args=(3, 4), 
+            kwargs=dict(z=2),
+            repeat=1,
+            interval=60)
+        self.job.save()
+
+    def test_enqueue_next(self):
+        """Schedule the next job"""
+        job = self.q.enqueue_next(self.job)
+        self.assertIsNotNone(job.id)
+        self.assertNotEqual(job.id, self.job.id)
+        self.assertEqual(job.scheduled_for, 
+            self.job.scheduled_for + self.job.interval)
+
+    def test_schedule_repeat_infinity(self):
+        """Schedule repeats for infinity"""
+        self.job.repeat = -1
+        job = self.q.enqueue_next(self.job)
+        self.assertIsNotNone(job.id)
+        self.assertNotEqual(job.id, self.job.id)
+        self.assertEqual(job.repeat, self.job.repeat)
+
+    def test_schedule_repeat_until(self):
+        """Schedule repeat until datetime"""
+        self.job.repeat = datetime(2999,1,1, tzinfo=utc)
+        job = self.q.enqueue_next(self.job)
+        self.assertIsNotNone(job.id)
+        self.assertNotEqual(job.id, self.job.id)
+        self.assertEqual(job.repeat, self.job.repeat)
 
 

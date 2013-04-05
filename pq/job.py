@@ -1,10 +1,16 @@
 import importlib
 import inspect
+from datetime import timedelta
 
-import times
+from dateutil.relativedelta import relativedelta
 from picklefield.fields import PickledObjectField
 from django.db import models
+from django.db import transaction
+from django.utils.timezone import now
 from six import get_method_self
+
+from .exceptions import InvalidInterval
+
 
 class Job(models.Model):
 
@@ -29,8 +35,15 @@ class Job(models.Model):
     kwargs = PickledObjectField(blank=True)
     description = models.CharField(max_length=254)
     result_ttl = models.IntegerField(null=True, blank=True)
-    status = models.PositiveIntegerField(null=True, blank=True, choices=STATUS_CHOICES)
+    status = models.PositiveIntegerField(null=True,
+            blank=True, choices=STATUS_CHOICES)
     enqueued_at = models.DateTimeField(null=True, blank=True)
+    scheduled_for = models.DateTimeField()
+    repeat = PickledObjectField(null=True, blank=True,
+            help_text="Number of times to repeat. -1 for forever.")
+    interval = PickledObjectField(null=True, blank=True,
+            help_text="Timedelta till next job")
+    between = models.CharField(max_length=5, null=True, blank=True)
     ended_at = models.DateTimeField(null=True, blank=True)
     expired_at = models.DateTimeField('expires', null=True, blank=True)
     result = PickledObjectField(null=True, blank=True)
@@ -41,10 +54,12 @@ class Job(models.Model):
     def __unicode__(self):
         return self.get_call_string()
 
-
     @classmethod
-    def create(cls, func, args=None, kwargs=None, connection=None,
-               result_ttl=None, status=None):
+    def create(cls, func, args=None,
+               kwargs=None, connection=None,
+               result_ttl=None, status=None,
+               scheduled_for=None, interval=0,
+               repeat=0, between=None):
         """Creates a new Job instance for the given function, arguments, and
         keyword arguments.
         """
@@ -52,11 +67,13 @@ class Job(models.Model):
             args = ()
         if kwargs is None:
             kwargs = {}
-        assert isinstance(args, tuple), '%r is not a valid args list.' % (args,)
-        assert isinstance(kwargs, dict), '%r is not a valid kwargs dict.' % (kwargs,)
+        assert isinstance(args, tuple), \
+            '%r is not a valid args list.' % (args,)
+        assert isinstance(kwargs, dict), \
+            '%r is not a valid kwargs dict.' % (kwargs,)
         job = cls()
         job.connection = connection
-        job.created_at = times.now()
+        job.created_at = now()
         if inspect.ismethod(func):
             job.instance = get_method_self(func)
             job.func_name = func.__name__
@@ -69,7 +86,53 @@ class Job(models.Model):
         job.description = job.get_call_string()
         job.result_ttl = result_ttl
         job.status = status
+        job.scheduled_for = scheduled_for
+        job.interval = interval
+        job.repeat = repeat
+        job.clean()
         return job
+
+    @classmethod
+    def _get_job_or_promise(cls, conn, queue, timeout):
+        """
+        Helper function that pops the job from the queue
+        or returns a queue_name (the promise) and a revised timeout.
+
+        The job is considered started at this point.
+
+        The promised queue name is a queue to be polled
+        at the timeout.
+        """
+        promise = None
+        with transaction.commit_on_success(using=conn):
+            try:
+                qs = cls.objects.using(conn).select_for_update().filter(
+                    queue_id=queue.name)
+                if queue.scheduled:
+                    near_future = now()
+                    if timeout:
+                        near_future += timedelta(seconds=timeout)
+                    job = qs.filter(scheduled_for__lte=near_future).order_by(
+                        'scheduled_for')[0]
+                    if job.scheduled_for > now():
+                        # ensure the next listen times-out
+                        # when scheduled job is due
+                        timed = near_future - now()
+                        if timed.seconds > 1:
+                            timeout = timed.seconds
+                            promise = job.queue_id
+                            job = None
+                else:
+                    job = qs.order_by('id')[0]
+
+                if job:
+                    job.queue = None
+                    job.status = Job.STARTED
+                    job.save()
+                    return job, None, timeout
+            except IndexError:
+                pass
+        return None, promise, timeout
 
     @property
     def func(self):
@@ -83,7 +146,6 @@ class Job(models.Model):
         module_name, func_name = func_name.rsplit('.', 1)
         module = importlib.import_module(module_name)
         return getattr(module, func_name)
-
 
     def get_ttl(self, default_ttl=None):
         """Returns ttl for a job that determines how long a job and its result
@@ -111,8 +173,22 @@ class Job(models.Model):
         self.result = self.func(*self.args, **self.kwargs)
         return self.result
 
+    def clean(self):
+        if isinstance(self.interval, int) and self.interval >= 0:
+                self.interval = timedelta(seconds=self.interval)
+        elif self.scheduled_for and not (
+                isinstance(self.interval, timedelta) or
+                isinstance(self.interval, relativedelta)):
+            raise InvalidInterval(
+                "Interval must be a positive integer,"
+                " timedelta, or relativedelta instance")
+
     def save(self, *args, **kwargs):
         kwargs.setdefault('using', self.connection)
+        if not self.enqueued_at:
+            self.enqueued_at = now()
+        if not self.scheduled_for:
+            self.scheduled_for = self.enqueued_at
         super(Job, self).save(*args, **kwargs)
 
 
@@ -129,4 +205,3 @@ class QueuedJob(Job):
 class DequeuedJob(Job):
     class Meta:
         proxy = True
-

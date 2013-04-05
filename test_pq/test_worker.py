@@ -12,9 +12,6 @@ from pq.job import Job
 from .fixtures import say_hello, div_by_zero, create_file_after_timeout
 
 
-def strip_milliseconds(date):
-    return times.to_universal(times.format(date, 'UTC'))
-
 class TestWorker(TransactionTestCase):
     def setUp(self):
         self.fooq, self.barq = Queue('foo'), Queue('bar')
@@ -100,7 +97,7 @@ class TestWorkFails(TransactionTestCase):
         self.fq = get_failed_queue()
         self.w = Worker.create([self.q])
         self.job = self.q.enqueue(div_by_zero)
-        self.enqueued_at = strip_milliseconds(self.job.enqueued_at)
+        self.enqueued_at = self.job.enqueued_at
 
     def test_work_fails(self):
         """Failing jobs are put on the failed queue."""
