@@ -83,7 +83,7 @@ Some more queue creation examples:
     # run synchronously when settings.DEBUG == True
     from django.conf import settings
 
-    q = Queue(async=settings.DEBUG)  # Useful to set this to True for tests
+    q = Queue(async=not settings.DEBUG)
 
     # Up the timeout for slow jobs to 10 minutes
     q = Queue(timeout=600)
@@ -136,6 +136,69 @@ Enqueue your jobs in any of the following ways:
     # add a job to the queue
     job = add.delay(kwargs='friend')
 
+
+Serial Queues
+--------------
+
+A serial queue exists which soft locks the queue for the task being performed. Additional tasks can be enqueued but not performed while the current task is being performed.
+
+.. code-block:: python
+
+    from pq import SerialQueue
+
+    sq = SerialQueue('serial')
+
+
+
+Scheduling
+-----------
+
+Tasks can be scheduled at specific times, repeated at intervals, repeated until a given date, and performed in a specific time window. Unlike a cron job, a scheduled task is a promise not a guarantee to perfom a task at a specific datetime. Timezone awareness depends on your ``USE_TZ`` django setting, and the task will be performed if a worker is available and idle. Some examples:
+
+.. code-block:: python
+    
+    from django.utils.timezone import utc, now
+    from dateutil.relativedelta import relativedelta
+    from datetime import datetime
+
+    # you should use timezone aware dates if you have USE_TZ=True
+    future = datetime(2014,01,01, tzinfo=utc)
+    q = Queue()
+
+    # The simple enqueue like call
+    q.schedule(future, say_hello, 'you')
+
+    # A more complicated enqueue_call style version
+    q.schedule_call(future, say_hello, args=('Happy New Year',), timeout=60)
+
+    # or to repeat 10 times every 60 seconds
+    q.schedule_call(now(), say_hello, args=('you & you',), repeat=10, interval=60)
+
+    # to repeat indefinitely every day
+    q.schedule_call(now(), say_hello, args=('groundhog day',), repeat=-1, interval=60*60*24) 
+
+    # ensure the schedule falls within a time range
+    q.schedule_call(now(), say_hello, args=('groundhog day',), repeat=-1, interval=60*60*24, between='2:00/18:30')  # could also use variants '2-18.30' 
+
+    ## repeat on timedelta or relativedelta instances
+
+    # repeat on the first indefinitely starting next month
+    n = now()
+    dt = datetime(n.year,n.month+1,1, tzinfo=utc)
+    monthly = relativedelta(months=1)
+
+    q.schedule_call(dt, say_hello, args=('groundhog day',), repeat=-1, interval=monthly)
+
+    # or repeat on the last day of the month until 2020
+    monthly = relativedelta(months=1, days=-1)
+    until = datetime(2020,1,1, tzinfo=utc)
+
+    q.schedule_call(dt, say_hello, args=('groundhog day',), repeat=until, interval=monthly)
+
+
+Note: Scheduling is not currently in RQ so the api may change.
+
+
 Results
 ---------
 
@@ -145,7 +208,7 @@ If a job requires more (or less) time to complete, the default timeout period ca
 
 .. code-block:: python
 
-    q = Queue
+    q = Queue()
     q.enqueue(func=mytask, args=(foo,), kwargs={'bar': qux}, timeout=600)
 
 
@@ -268,6 +331,7 @@ Jobs that raise exceptions go to the ``failed`` queue. You can register a custom
     def my_handler(job, *exc_info):
         # do custom things here
 
+
 Settings
 ---------
 
@@ -284,7 +348,7 @@ All settings are optional. Defaults listed below.
 Benchmarks & other lies
 -------------------------
 
-To gauge rough performance a pqbenchmark management command is included that is designed to test worker throughput while jobs are being enqueued. The command will execute the function ``do_nothing``  a number of times and simultaneously spawn workers to consume the benchmark queue. After enqueing is completed a count is taken of the number of jobs remaining and an approximate number of jobs/s is calculated. There are a number of factors you can adjust to simulate your load, and as a bonus it can test RQ. For example:
+To gauge rough performance a ``pqbenchmark`` management command is included that is designed to test worker throughput while jobs are being enqueued. The command will enqueue the function ``do_nothing`` a number of times and simultaneously spawn workers to consume the benchmark queue. After enqueing is completed a count is taken of the number of jobs remaining and an approximate number of jobs/s is calculated. There are a number of factors you can adjust to simulate your load, and as a bonus it can test RQ. For example:
 
 .. code-block:: bash
 
@@ -301,7 +365,7 @@ To gauge rough performance a pqbenchmark management command is included that is 
     # If rq/redis is installed you can compare.
     $ django-admin.py pqbenchmark 50000 -w4 --sleep=250 --backend=rq
 
-While the benchmark is not designed to measure hair splitting performance, on a Macbook Pro 2.6Ghz i7 with 8GB ram and 256 GB flash drive I get the following jobs per second throughput with Postresapp (9.2.2.0), Redis Server (2.6.11) with 100,000 enqueued jobs on default settings. For pypy the psycopg2cffi driver is used:
+Starting with an unrealistic benchmark on a Macbook Pro 2.6Ghz i7 with 8GB ram and 256 GB SSD drive I get the following jobs per second throughput with Postresapp (9.2.2.0), Redis Server (2.6.11) with 100,000 enqueued jobs on default settings. For pypy the psycopg2cffi driver is used:
 
 +-----------+-----------+-----------+-----------+-----------+
 | Workers   | PQ-Py2.7  | PQ-Py3.3  | PQ-PyPy2.0| RQ-Py2.7  |
@@ -315,21 +379,7 @@ While the benchmark is not designed to measure hair splitting performance, on a 
 | 6         | 148       | 144       | 116       | 399       |
 +-----------+-----------+-----------+-----------+-----------+
 
-As you can see from the numbers RQ is a far better choice for higher volumes of cheap tasks. There is also only a small penalty for using PQ on Python 3. Note, the PyPy numbers no doubt reflect the experimental status of the psycopg2cffi driver.  
-
-Simulating a modest task that has a 50ms overhead:
-
-+-----------+-----------+-----------+
-| Workers   | PQ-Py2.7  | RQ-Py2.7  |
-+===========+===========+===========+
-| 1         | 12        | 17        |
-+-----------+-----------+-----------+
-| 2         | 27        | 34        |
-+-----------+-----------+-----------+
-| 4         | 50        | 66        |
-+-----------+-----------+-----------+
-| 6         | 70        | 99        |
-+-----------+-----------+-----------+
+These results are unrealistic except to show theoretical differences between PQ and RQ. A commodity virtual server without the benefit of a local SSD for Postgresql will widen the gap dramatically between RQ and PQ, but as you can see from the numbers RQ is a far better choice for higher volumes of cheap tasks. Note that the PyPy numbers no doubt reflect the experimental status of the psycopg2cffi driver.  
 
 Simulating a slow task that has 250ms overhead:
 
@@ -349,7 +399,7 @@ Simulating a slow task that has 250ms overhead:
 | 20        | 70.2      | 75.9      |
 +-----------+-----------+-----------+
 
-Once your tasks get out to 250ms and beyond the differences between PQ and RQ become much more marginal. The important factor here are the tasks themselves, and how well your backend scales to the number of connections if you want to scale the number of workers. If you needed to scale your workers beyond 20 connections regularly then I don't know why you'd want to use django-pq.
+Once your tasks get out to 250ms and beyond the differences between PQ and RQ become much more marginal. The important factor here are the tasks themselves, and how well your backend scales in memory usage and IO to the number of connections if you want to scale the number of workers. Obviously again the quasi-persistent RQ is going to scale better given enough memory. 
 
 Development & Issues
 ---------------------
