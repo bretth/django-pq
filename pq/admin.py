@@ -29,7 +29,8 @@ class FailedJobAdmin(admin.ModelAdmin):
 
 
 class QueuedJobAdmin(admin.ModelAdmin):
-    list_display = ('__unicode__', 'queue', 'timeout', 'enqueued_at')
+    list_display = ('__unicode__', 'queue', 'timeout', 'enqueued_at',
+                    'scheduled_for', 'repeat', 'interval')
     list_filter = ('origin',)
     ordering = ('id',)
 
