@@ -5,6 +5,8 @@ except:
 
 from django.core.exceptions import ImproperlyConfigured
 from .queue import Queue as PQ
+from .queue import SerialQueue as SQ
 
 Queue = PQ.create
+SerialQueue = SQ.create
 

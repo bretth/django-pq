@@ -345,6 +345,48 @@ class Queue(models.Model):
         cursor.close()
 
 
+class SerialQueue(Queue):
+    """A queue with a lock"""
+
+    class Meta:
+        proxy = True
+
+    @classmethod
+    def create(cls,
+               name='default', default_timeout=None,
+               connection='default', async=True):
+        """Returns a Queue ready for accepting jobs"""
+        queue, created = cls.objects.using(connection).get_or_create(
+            name=name, serial=True, 
+            defaults={'default_timeout': default_timeout})
+        queue.connection = connection
+        queue._async = async
+
+        return queue 
+
+    def acquire_lock(self, timeout=0, no_wait=True):
+        try:
+            with transaction.commit_on_success(using=self.connection):
+                SerialQueue.objects.using(
+                    self.connection).select_for_update(
+                    no_wait=no_wait).get(
+                    name=self.name, lock_expires__lte=now())
+                if timeout:
+                    self.lock_expires = now() + timedelta(seconds=timeout)
+                    self.save()
+        except DatabaseError:
+            logger.debug('%s SerialQueue currently locked on update' % self.name)
+            return False
+        except SerialQueue.DoesNotExist:
+            logger.debug('%s SerialQueue currently locked' % self.name)
+            return False
+        return True
+
+    def release_lock(self):
+        self.lock_expires = now()
+        self.save()
+
+
 class FailedQueue(Queue):
     class Meta:
         proxy = True

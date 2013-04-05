@@ -396,6 +396,11 @@ class Worker(models.Model):
             self.handle_exception(job, *sys.exc_info())
             return False
 
+        # do it this way to avoid the extra sql call through job
+        for q in self.queues:
+            if q.name == job.queue_id and q.serial:
+                q.release_lock()
+
         if rv is None:
             self.log.info('Job OK')
         else:
