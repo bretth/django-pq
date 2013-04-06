@@ -286,13 +286,11 @@ To implement a worker in code:
 
 .. code-block:: python
 
-    from pq.worker import Worker
+    from pq import Worker
     from pq import Queue
-    q = Queue
+    q = Queue()
 
-    # note there is no syntactic sugar for Workers
-    # django-pq uses a create method instead
-    w = Worker.create(q)
+    w = Worker(q)
     w.work(burst=True)
 
 

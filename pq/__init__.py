@@ -6,7 +6,9 @@ except:
 from django.core.exceptions import ImproperlyConfigured
 from .queue import Queue as PQ
 from .queue import SerialQueue as SQ
+from .worker import Worker as W
 
 Queue = PQ.create
 SerialQueue = SQ.create
+Worker = W.create
 
