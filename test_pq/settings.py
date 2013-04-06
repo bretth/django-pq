@@ -1,3 +1,4 @@
+import os
 try:
     from psycopg2cffi import compat
     compat.register()
@@ -51,7 +52,7 @@ LOGGING = {
     'loggers': {
         '': {
             'handlers': ['console'],
-            'level': 'CRITICAL',
+            'level': os.getenv('LOGGING_LEVEL', 'CRITICAL'),
             'propagate': True
         },
     }
