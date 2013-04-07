@@ -18,13 +18,16 @@ class Job(models.Model):
     FINISHED = 2
     FAILED = 3
     STARTED = 4
+    FLOW = 5
 
     STATUS_CHOICES = (
         (QUEUED, 'queued'),
         (FINISHED, 'finished'),
         (FAILED, 'failed'),
         (STARTED, 'started'),
+        (FLOW, 'flow'),
     )
+    uuid = models.CharField(max_length=64, null=True, blank=True)
     connection = None
     created_at = models.DateTimeField()
     origin = models.CharField(max_length=254, null=True, blank=True)
@@ -50,6 +53,9 @@ class Job(models.Model):
     exc_info = models.TextField(null=True, blank=True)
     timeout = models.PositiveIntegerField(null=True, blank=True)
     meta = PickledObjectField(blank=True)
+    flow = models.ForeignKey('FlowStore', null=True, blank=True)
+    if_failed = models.CharField(max_length=64, null=True, blank=True)
+    if_result = models.CharField(max_length=64, null=True, blank=True)
 
     def __unicode__(self):
         return self.get_call_string()

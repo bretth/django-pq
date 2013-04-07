@@ -23,6 +23,7 @@ from six import u
 
 from .queue import Queue as PQ
 from .queue import get_failed_queue
+from .flow import Flow
 from .job import Job
 from .utils import make_colorizer
 from .exceptions import (NoQueueError, UnpickleError,
@@ -369,6 +370,10 @@ class Worker(models.Model):
             job.func_name,
             job.origin, time.time()))
 
+               # do it this way to avoid the extra sql call through job
+        for q in self.queues:
+            if q.name == job.queue_id:
+                break
         try:
             with death_penalty_after(job.timeout or 180):
                 rv = job.perform()
@@ -390,19 +395,20 @@ class Worker(models.Model):
         except:
             job.status = Job.FAILED
             job.save()
+            if job.if_failed:
+                Flow.handle_failed(job, q)
             self.handle_exception(job, *sys.exc_info())
             return False
 
-        # do it this way to avoid the extra sql call through job
-        for q in self.queues:
-            if q.name == job.queue_id and q.serial:
-                q.release_lock()
+        if q.serial:
+            q.release_lock()
 
         if rv is None:
             self.log.info('Job OK')
         else:
             self.log.info('Job OK, result = %s' % (yellow(u(rv)),))
-
+        if job.if_result:
+            Flow.handle_result(job, q)
         if job.result_ttl == 0:
             self.log.info('Result discarded immediately.')
         elif job.result_ttl > 0:
