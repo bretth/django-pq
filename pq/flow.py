@@ -4,6 +4,7 @@ import uuid
 from django.conf import settings
 from django.db import models
 from django.utils.timezone import now
+from picklefield.fields import PickledObjectField
 
 from .queue import Queue
 from .job import Job
@@ -37,7 +38,10 @@ class FlowQueue(Queue):
         # set the simple sequential case on success
         job.uuid = uuid.uuid4()
         if self.jobs:
-            prior_job = self.jobs.values()[-1]
+            try:
+                prior_job = self.jobs.values()[-1]
+            except TypeError:  # py33
+                prior_job = self.jobs.popitem()[1]
             prior_job.if_result = job.uuid
             self.jobs[prior_job.uuid] = prior_job
         else:  # first job
@@ -79,11 +83,12 @@ class FlowStore(models.Model):
     )
 
     name = models.CharField(max_length=100, blank=True)
-    started_at = models.DateTimeField(null=True, blank=True)
+    enqueued_at = models.DateTimeField(null=True, blank=True)
     ended_at = models.DateTimeField(null=True, blank=True)
     expired_at = models.DateTimeField('expires', null=True, blank=True)
     status = models.PositiveIntegerField(null=True,
             blank=True, choices=STATUS_CHOICES)
+    jobs = PickledObjectField(blank=True)
 
     class Meta:
         verbose_name ='flow'
@@ -92,8 +97,11 @@ class FlowStore(models.Model):
 
 class Flow(object):
 
-    def __init__(self, queue, name='default'):
+    def __init__(self, queue, name=''):
         queue = FlowQueue.create(name=queue.name)
+        self.flowstore = FlowStore(name=name)
+        self.flowstore.jobs = []
+        self.flowstore.save()
         queue.jobs = OrderedDict()
         self.queue = queue
         self.name = name
@@ -103,31 +111,48 @@ class Flow(object):
         return self.queue
 
     def __exit__(self, type, value, traceback):
-        for job in self.queue.jobs.values():
+        for i, job in enumerate(self.queue.jobs.values()):
+            job.flow = self.flowstore
             if not job.queue_id:
                 job.status = Job.FLOW
+            else:
+                job.status = Job.QUEUED
             if self.async:
                 job.save()
+                if i == 0:
+                    self.flowstore.enqueued_at = job.enqueued_at
+                self.flowstore.jobs.append(job.id)
                 if job.queue_id:
                     self.queue.notify(job.id)
             else:
                 job.perform()
                 job.save()
 
+        if self.async and self.queue.jobs:
+            self.flowstore.status = FlowStore.QUEUED
+            self.flowstore.save()
+
     @classmethod
     def handle_result(cls, job, queue):
         """Get the next job in the flow sequence"""
-        next_job = Job.objects.get(uuid=job.if_result)
-        next_job.queue_id = queue.name
-        next_job.enqueued_at = now()
-        next_job.status = Job.QUEUED
-        next_job.save()
-        queue.notify(next_job.id)
+        if job.if_result:
+            next_job = Job.objects.get(uuid=job.if_result)
+            next_job.queue_id = queue.name
+            next_job.enqueued_at = now()
+            next_job.status = Job.QUEUED
+            next_job.save()
+            queue.notify(next_job.id)
+        else:  # maybe last job
+            fs = FlowStore.objects.get(pk=job.flow_id)
+            if fs.jobs[-1] == job.id and job.expired_at < now():
+                fs.delete()
+            elif fs.jobs[-1] == job.id:
+                fs.ended_at = job.ended_at
+                fs.expired_at = job.expired_at
+                fs.status = FlowStore.FINISHED
+                fs.save()
 
     @classmethod
     def handle_failed(cls, job, queue):
         """Handle a failed job"""
         pass
-
-
-

@@ -395,7 +395,7 @@ class Worker(models.Model):
         except:
             job.status = Job.FAILED
             job.save()
-            if job.if_failed:
+            if job.flow_id:
                 Flow.handle_failed(job, q)
             self.handle_exception(job, *sys.exc_info())
             return False
@@ -407,7 +407,7 @@ class Worker(models.Model):
             self.log.info('Job OK')
         else:
             self.log.info('Job OK, result = %s' % (yellow(u(rv)),))
-        if job.if_result:
+        if job.flow_id:
             Flow.handle_result(job, q)
         if job.result_ttl == 0:
             self.log.info('Result discarded immediately.')
