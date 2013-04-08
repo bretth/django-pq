@@ -47,6 +47,7 @@ class Job(models.Model):
     interval = PickledObjectField(null=True, blank=True,
             help_text="Timedelta till next job")
     between = models.CharField(max_length=5, null=True, blank=True)
+    weekdays = PickledObjectField(blank=True)
     ended_at = models.DateTimeField(null=True, blank=True)
     expired_at = models.DateTimeField('expires', null=True, blank=True)
     result = PickledObjectField(null=True, blank=True)
@@ -65,7 +66,7 @@ class Job(models.Model):
                kwargs=None, connection=None,
                result_ttl=None, status=None,
                scheduled_for=None, interval=0,
-               repeat=0, between=None):
+               repeat=0, between=None, weekdays=None):
         """Creates a new Job instance for the given function, arguments, and
         keyword arguments.
         """

@@ -153,10 +153,10 @@ Serial queues are not in RQ.
 Scheduling
 -----------
 
-Tasks can be scheduled at specific times, repeated at intervals, repeated until a given date, and performed in a specific time window. Unlike a cron job, a scheduled task is a promise not a guarantee to perfom a task at a specific datetime. Timezone awareness depends on your ``USE_TZ`` django setting, and the task will be performed if a worker is available and idle. Some examples:
+Tasks can be scheduled at specific times, repeated at intervals, repeated until a given date, and performed in a specific time window and weekday. Unlike a cron job, a scheduled task is a promise not a guarantee to perfom a task at a specific datetime. Timezone awareness depends on your ``USE_TZ`` django setting, and the task will be performed if a worker is available and idle. Some examples:
 
 .. code-block:: python
-    
+
     from django.utils.timezone import utc, now
     from dateutil.relativedelta import relativedelta
     from datetime import datetime
@@ -175,12 +175,19 @@ Tasks can be scheduled at specific times, repeated at intervals, repeated until 
     q.schedule_call(now(), say_hello, args=('you & you',), repeat=10, interval=60)
 
     # to repeat indefinitely every day
-    q.schedule_call(now(), say_hello, args=('groundhog day',), repeat=-1, interval=60*60*24) 
+    q.schedule_call(now(), say_hello, args=('groundhog day',), repeat=-1, interval=60*60*24)
 
     # ensure the schedule falls within a time range
-    q.schedule_call(now(), say_hello, args=('groundhog day',), 
-        repeat=-1, interval=60*60*24, between='2:00/18:30') 
+    q.schedule_call(now(), say_hello, args=('groundhog day',),
+        repeat=-1, interval=60*60*24, between='2:00/18:30')
      # could also use variants like '2.00-18.30' or '2-18:30'
+
+    # repeat on Monday to Friday
+    from dateutil.relativedelta import MO, TU, WE, TH, FR
+
+    q.schedule_call(dt, do_nothing, repeat=-1, weekdays=(MO, TU, WE, TH, FR))
+    # as integers, Monday to Wednesday
+    q.schedule_call(dt, do_nothing, repeat=-1, weekdays=(0, 1, 2,))
 
     ## repeat on timedelta or relativedelta instances
 
@@ -352,15 +359,15 @@ To gauge rough performance a ``pqbenchmark`` management command is included that
 
 .. code-block:: bash
 
-    # Simulate trivial tasks with default settings. 
+    # Simulate trivial tasks with default settings.
     # Useful for comparing raw backend overhead.
     # 100,000 jobs and 1 worker.
-    $ django-admin.py pqbenchmark 
+    $ django-admin.py pqbenchmark
 
     # Simulate a slower running task.
     # Useful for seeing how many workers you can put on a task
     # Enqueue 50000 jobs with 4 workers and a 250 millisecond job execution time:
-    $ django-admin.py pqbenchmark 50000 -w4 --sleep=250  
+    $ django-admin.py pqbenchmark 50000 -w4 --sleep=250
 
     # If rq/redis is installed you can compare.
     $ django-admin.py pqbenchmark 50000 -w4 --sleep=250 --backend=rq
@@ -379,7 +386,7 @@ Starting with an unrealistic benchmark on a Macbook Pro 2.6Ghz i7 with 8GB ram a
 | 6         | 148       | 144       | 116       | 399       |
 +-----------+-----------+-----------+-----------+-----------+
 
-These results are unrealistic except to show theoretical differences between PQ and RQ. A commodity virtual server without the benefit of a local SSD for Postgresql will widen the gap dramatically between RQ and PQ, but as you can see from the numbers RQ is a far better choice for higher volumes of cheap tasks. Note that the PyPy numbers no doubt reflect the experimental status of the psycopg2cffi driver.  
+These results are unrealistic except to show theoretical differences between PQ and RQ. A commodity virtual server without the benefit of a local SSD for Postgresql will widen the gap dramatically between RQ and PQ, but as you can see from the numbers RQ is a far better choice for higher volumes of cheap tasks. Note that the PyPy numbers no doubt reflect the experimental status of the psycopg2cffi driver.
 
 Simulating a slow task that has 250ms overhead:
 
@@ -399,7 +406,7 @@ Simulating a slow task that has 250ms overhead:
 | 20        | 70.2      | 75.9      |
 +-----------+-----------+-----------+
 
-Once your tasks get out to 250ms and beyond the differences between PQ and RQ become much more marginal. The important factor here are the tasks themselves, and how well your backend scales in memory usage and IO to the number of connections if you want to scale the number of workers. Obviously again the quasi-persistent RQ is going to scale better than your average disk bound postgresql installation. 
+Once your tasks get out to 250ms and beyond the differences between PQ and RQ become much more marginal. The important factor here are the tasks themselves, and how well your backend scales in memory usage and IO to the number of connections if you want to scale the number of workers. Obviously again the quasi-persistent RQ is going to scale better than your average disk bound postgresql installation.
 
 Development & Issues
 ---------------------

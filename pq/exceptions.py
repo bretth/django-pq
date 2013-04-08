@@ -34,3 +34,7 @@ class InvalidBetween(Exception):
 
 class InvalidInterval(Exception):
     pass
+
+class InvalidWeekdays(Exception):
+    pass
+

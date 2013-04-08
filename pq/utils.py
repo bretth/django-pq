@@ -10,9 +10,11 @@ import re
 import sys
 import logging
 from datetime import timedelta, datetime, time
+from dateutil import relativedelta
+from six import integer_types
 
 from .compat import is_python_version
-from .exceptions import InvalidBetween
+from .exceptions import InvalidBetween, InvalidWeekdays
 
 
 def gettermsize():
@@ -39,16 +41,18 @@ def gettermsize():
             cr = (25, 80)
     return int(cr[1]), int(cr[0])
 
-def get_restricted_datetime(at, between=''):
+def get_restricted_datetime(at, between='', weekdays=None):
     """
-    Returns a new datetime that always falls in 
-    the timerange ``between`` an iso 8601 string or variant.
+    Returns a new datetime that always falls in
+    the timerange ``between`` an iso 8601 string or variant,
+    and days where days is a list or tuple of relativedelta weekday
+    objects.
 
     If the time part of the datetime falls before the
     timerange the datetime will be moved forward to the
     start of the range. In the event the time is after the
     range the datetime will be moved forward to the next
-    day. 
+    day.
 
     >>> dt = datetime(2013,1,1,6,30)
     >>> get_restricted_datetime(dt, '7-12')
@@ -60,33 +64,53 @@ def get_restricted_datetime(at, between=''):
     >>> get_restricted_datetime(dt, '1:00:10/6:00:59')
     datetime(2013,1,2,1)
     """
-    pattern = re.compile(
-        r"(\d{1,2})[:.]?(\d{0,2})[:.]?\d{0,2}\s*[/-]+" +
-        r"\s*(\d{1,2})[:.]?(\d{0,2})[:.]?\d{0,2}"
-        )
-    r = pattern.search(between)
-    if not r:
-        raise InvalidBetween("Invalid between range %s" % between)
+    if between:
+        pattern = re.compile(
+            r"(\d{1,2})[:.]?(\d{0,2})[:.]?\d{0,2}\s*[/-]+" +
+            r"\s*(\d{1,2})[:.]?(\d{0,2})[:.]?\d{0,2}"
+            )
+        r = pattern.search(between)
+        if not r:
+            raise InvalidBetween("Invalid between range %s" % between)
 
-    shour, smin, ehour, emin = r.groups()
-    shour = int(shour)
-    smin = int(smin) if smin else 0
-    ehour = int(ehour)
-    emin = int(emin) if emin else 0
-    if ehour < shour:
-        raise InvalidBetween("Between end cannot be before start")
-    elif ehour == 24:
-        ehour = 23
-        emin = 59
-    st = time(shour, smin, tzinfo=at.tzinfo)
-    et = time(ehour, emin, tzinfo=at.tzinfo)
-    date = at.date()
-    compare_st = datetime.combine(date, st)
-    compare_et = datetime.combine(date, et)
-    if at < compare_st:
-        at = compare_st
-    elif at > compare_et:
-        at = compare_st + timedelta(days=1)
+        shour, smin, ehour, emin = r.groups()
+        shour = int(shour)
+        smin = int(smin) if smin else 0
+        ehour = int(ehour)
+        emin = int(emin) if emin else 0
+        if ehour < shour:
+            raise InvalidBetween("Between end cannot be before start")
+        elif ehour == 24:
+            ehour = 23
+            emin = 59
+        st = time(shour, smin, tzinfo=at.tzinfo)
+        et = time(ehour, emin, tzinfo=at.tzinfo)
+        date = at.date()
+        compare_st = datetime.combine(date, st)
+        compare_et = datetime.combine(date, et)
+        if at < compare_st:
+            at = compare_st
+        elif at > compare_et:
+            at = compare_st + timedelta(days=1)
+    if weekdays:
+        weekdays = list(weekdays)
+        for i, value in enumerate(weekdays):
+            if isinstance(value, relativedelta.weekday):
+                weekdays[i] = value.weekday
+            elif isinstance(value, integer_types) and value >=0 and value <=6:
+                continue
+            else:
+                msg = "Invalid weekday %s. Weekdays must be a" % str(value)
+                msg = ' '.join([msg, "list or tuple of relativedelta.weekday",
+                               "instances or integers between 0 and 6"])
+                raise InvalidWeekdays(msg)
+        weekdays = sorted(weekdays)
+        nextdays = relativedelta.weekdays[at.weekday():]
+        priordays = relativedelta.weekdays[:at.weekday()]
+        for i, day in enumerate(nextdays + priordays):
+            if day.weekday in weekdays:
+                at += timedelta(days=i)
+                break
     return at
 
 

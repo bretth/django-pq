@@ -26,7 +26,7 @@ def get_failed_queue(connection='default'):
 class _EnqueueArgs(object):
     """Simple argument and keyword argument wrapper
         for enqueue and schedule queue methods
-    """ 
+    """
     def __init__(self, *args, **kwargs):
         self.timeout = None
         self.result_ttl = None
@@ -48,12 +48,12 @@ class Queue(models.Model):
     name = models.CharField(max_length=100, primary_key=True, default='default')
     default_timeout = models.PositiveIntegerField(null=True, blank=True)
     cleaned = models.DateTimeField(null=True, blank=True)
-    scheduled = models.BooleanField(default=False, 
+    scheduled = models.BooleanField(default=False,
         help_text="Optimisation: scheduled tasks are slower.")
     lock_expires = models.DateTimeField(default=now())
     serial = models.BooleanField(default=False)
     _async = True
-    
+
     def __unicode__(self):
         return self.name
 
@@ -107,30 +107,30 @@ class Queue(models.Model):
             if job.repeat <= now():
                 return
             else:
-                repeat = job.repeat 
+                repeat = job.repeat
         else:
             repeat = job.repeat - 1 if job.repeat > 0 else -1
         timeout = job.timeout
         scheduled_for = job.scheduled_for + job.interval
-        if job.between:
-            scheduled_for = get_restricted_datetime(scheduled_for, job.between)
+        scheduled_for = get_restricted_datetime(scheduled_for, job.between, job.weekdays)
         # handle trivial repeats
         if not self.scheduled and (scheduled_for > job.scheduled_for):
             self.scheduled = True
             self.save()
         job = Job.create(job.func, job.args, job.kwargs, connection=job.connection,
                          result_ttl=job.result_ttl,
-                         scheduled_for=scheduled_for, 
+                         scheduled_for=scheduled_for,
                          repeat=repeat,
                          interval=job.interval,
                          between=job.between,
+                         weekdays=job.weekdays,
                          status=Job.QUEUED)
         return self.enqueue_job(job, timeout=timeout)
 
 
-    def enqueue_call(self, func, args=None, kwargs=None, 
+    def enqueue_call(self, func, args=None, kwargs=None,
         timeout=None, result_ttl=None, at=None,
-        repeat=None, interval=0, between=''): #noqa
+        repeat=None, interval=0, between='', weekdays=None): #noqa
         """Creates a job to represent the delayed function call and enqueues
         it.
 
@@ -143,14 +143,14 @@ class Queue(models.Model):
         if at and not self.scheduled:
             self.scheduled = True
             self.save()
-        if between:
-            at = get_restricted_datetime(at, between)
+        at = get_restricted_datetime(at, between, weekdays)
         job = Job.create(func, args, kwargs, connection=self.connection,
                          result_ttl=result_ttl,
                          scheduled_for=at,
                          repeat=repeat,
                          interval=interval,
-                         between=between, 
+                         between=between,
+                         weekdays=weekdays,
                          status=Job.QUEUED)
         return self.enqueue_job(job, timeout=timeout)
 
@@ -193,7 +193,7 @@ class Queue(models.Model):
             job.origin = self.name
 
         if timeout:
-            job.timeout = timeout 
+            job.timeout = timeout
         else:
             job.timeout = PQ_DEFAULT_JOB_TIMEOUT  # default
 
@@ -209,7 +209,7 @@ class Queue(models.Model):
 
     def schedule(self, at, f, *args, **kwargs):
         """As per enqueue but schedule ``at`` datetime"""
-        
+
         if not isinstance(f, string_types) and f.__module__ == '__main__':
             raise ValueError(
                     'Functions from the __main__ module cannot be processed '
@@ -221,13 +221,13 @@ class Queue(models.Model):
                                  at=at)
 
 
-    def schedule_call(self, at, f, args=None, kwargs=None, 
+    def schedule_call(self, at, f, args=None, kwargs=None,
         timeout=None, result_ttl=None, repeat=0, interval=0, between=''):
         """
-        As per enqueue_call but friendly positional ``at`` 
+        As per enqueue_call but friendly positional ``at``
         datetime argument.
 
-        ``repeat`` a number of times or infinitely -1 at 
+        ``repeat`` a number of times or infinitely -1 at
         ``interval`` seconds. Interval also accepts a timedelta or
         dateutil relativedelta instance
 
@@ -251,7 +251,7 @@ class Queue(models.Model):
         with transaction.commit_on_success(using=self.connection):
             try:
                 job = Job.objects.using(self.connection).select_for_update().filter(
-                queue=self, status=Job.QUEUED, 
+                queue=self, status=Job.QUEUED,
                 scheduled_for__lte=now()).order_by('scheduled_for')[0]
                 job.queue = None
                 job.save()
@@ -357,12 +357,12 @@ class SerialQueue(Queue):
                connection='default', async=True):
         """Returns a Queue ready for accepting jobs"""
         queue, created = cls.objects.using(connection).get_or_create(
-            name=name, serial=True, 
+            name=name, serial=True,
             defaults={'default_timeout': default_timeout})
         queue.connection = connection
         queue._async = async
 
-        return queue 
+        return queue
 
     def acquire_lock(self, timeout=0, no_wait=True):
         try:
