@@ -5,11 +5,12 @@ try:
 except ImportError:
     pass
 
-DEBUG=False
+DEBUG=True
 TEMPLATE=DEBUG
 USE_TZ = True
 STATIC_URL = '/static/'
 MEDIA_URL = '/media/'
+SOUTH_TESTS_MIGRATE = False
 
 DATABASES = {
     'default': {
@@ -30,6 +31,7 @@ INSTALLED_APPS = (
     'django.contrib.sessions',
     'django.contrib.admin',
     'pq',
+    #'south',
 )
 ROOT_URLCONF='test_pq.urls'
 SECRET_KEY = '1234'
