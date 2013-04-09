@@ -2,8 +2,9 @@ from django.test import TestCase
 
 from pq.flow import Flow, FlowStore
 from pq import Queue, Worker
+from pq.queue import FailedQueue
 from pq.job import Job
-from .fixtures import say_hello, do_nothing
+from .fixtures import say_hello, do_nothing, some_calculation
 
 class TestFlowCreate(TestCase):
 
@@ -77,3 +78,42 @@ class TestFlowStore(TestCase):
         self.assertIsNotNone(fs.expired_at)
 
 
+class TestFlowStoreFailed(TestCase):
+
+    def setUp(self):
+        self.q = Queue()
+        self.w = Worker(self.q)
+        with Flow(self.q, name='test') as f:
+            # enqueue a job to fail
+            self.job = f.enqueue(some_calculation, 2, 3, 0)
+            self.n_job = f.enqueue(do_nothing)
+
+    def test_flowstore_failed(self):
+
+        fs = FlowStore.objects.get(name='test')
+        self.w.work(burst=True)
+
+        fs = FlowStore.objects.get(name='test')
+        self.assertEqual(fs.status, FlowStore.FAILED)
+        self.assertIsNone(fs.ended_at)
+        self.assertIsNone(fs.expired_at)
+        n_job = Job.objects.get(pk=self.n_job.id)
+        self.assertIsNone(n_job.queue_id)
+        self.assertEqual(n_job.status, Job.FLOW)
+        job = Job.objects.get(pk=self.job.id)
+        # alter the args so it passes
+        job.args = (2, 3, 2)
+        job.save()
+        fq = FailedQueue.create()
+        fq.requeue(job.id)
+
+        # do work
+        self.w.work(burst=True)
+
+        # should now be finished
+        fs = FlowStore.objects.get(name='test')
+        self.assertEqual(fs.status, FlowStore.FINISHED)
+        job = Job.objects.get(pk=self.job.id)
+        n_job = Job.objects.get(pk=self.n_job.id)
+        self.assertEqual(job.status, Job.FINISHED)
+        self.assertEqual(n_job.status, Job.FINISHED)

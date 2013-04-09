@@ -155,4 +155,15 @@ class Flow(object):
     @classmethod
     def handle_failed(cls, job, queue):
         """Handle a failed job"""
-        pass
+        if job.if_failed:
+            next_job = Job.objects.get(uuid=job.if_failed)
+            next_job.queue_id = queue.name
+            next_job.enqueued_at = now()
+            next_job.status = Job.QUEUED
+            next_job.save()
+            queue.notify(next_job.id)
+        fs = FlowStore.objects.get(pk=job.flow_id)
+        fs.status = FlowStore.FAILED
+        fs.save()
+        
+
