@@ -1,4 +1,8 @@
+import time
+from datetime import datetime, timedelta
 from django.test import TestCase
+from django.test.utils import override_settings
+from django.utils.timezone import now
 
 from pq.flow import Flow, FlowStore
 from pq import Queue, Worker
@@ -76,6 +80,40 @@ class TestFlowStore(TestCase):
         self.assertEqual(fs.status, FlowStore.FINISHED)
         self.assertIsNotNone(fs.ended_at)
         self.assertIsNotNone(fs.expired_at)
+
+
+class TestFlowStoreExpiredTTL(TestCase):
+
+    def setUp(self):
+        self.q = Queue()
+        self.w = Worker(self.q, default_result_ttl=1)
+        with Flow(self.q, name='test') as f:
+            self.n_job = f.enqueue(do_nothing)
+
+    def test_delete_expired_ttl(self):
+        self.w.work(burst=True)
+        self.assertIsNotNone(FlowStore.objects.get(name='test'))
+        time.sleep(1)
+        self.w.work(burst=True)
+        with self.assertRaises(FlowStore.DoesNotExist):
+            fs = FlowStore.objects.get(name='test')
+
+
+class TestFlowStoreExpiredTTLOnDequeue(TestCase):
+
+    def setUp(self):
+        self.q = Queue()
+        self.w = Worker(self.q, default_result_ttl=1, default_worker_ttl=2.1, expires_after=2)
+        with Flow(self.q, name='test') as f:
+            self.n_job = f.enqueue(do_nothing)
+
+    def test_delete_expired_ttl_on_dequeue(self):
+        self.w.work()
+        with self.assertRaises(FlowStore.DoesNotExist):
+            fs = FlowStore.objects.get(name='test')
+
+
+
 
 
 class TestFlowStoreFailed(TestCase):

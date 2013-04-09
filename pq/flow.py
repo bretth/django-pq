@@ -2,7 +2,7 @@ from collections import OrderedDict
 import uuid
 
 from django.conf import settings
-from django.db import models
+from django.db import models, transaction
 from django.utils.timezone import now
 from picklefield.fields import PickledObjectField
 
@@ -102,6 +102,15 @@ class FlowStore(models.Model):
             return str(self.id)
         else:
             return self.name
+
+    @classmethod
+    def delete_expired_ttl(cls, connection):
+        """Delete jobs from the queue which have expired"""
+        with transaction.commit_on_success(using=connection):
+            FlowStore.objects.using(connection).filter(
+               status=FlowStore.FINISHED, expired_at__lte=now()).delete()
+
+
 class Flow(object):
 
     def __init__(self, queue, name=''):
@@ -172,5 +181,5 @@ class Flow(object):
         fs = FlowStore.objects.get(pk=job.flow_id)
         fs.status = FlowStore.FAILED
         fs.save()
-        
+
 
