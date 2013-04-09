@@ -406,7 +406,13 @@ class Worker(models.Model):
         if rv is None:
             self.log.info('Job OK')
         else:
-            self.log.info('Job OK, result = %s' % (yellow(u(rv)),))
+            # the six u doesnt seem compatible
+            # with converting an integer
+            try:
+                msg = unicode(rv)
+            except NameError:
+                msg = str(rv)
+            self.log.info('Job OK, result = %s' % (yellow(msg),))
         if job.flow_id:
             Flow.handle_result(job, q)
         if job.result_ttl == 0:
