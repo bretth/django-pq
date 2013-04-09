@@ -3,6 +3,7 @@ import os
 import errno
 import random
 import time
+from datetime import timedelta
 
 try:
     from procname import setprocname
@@ -23,7 +24,7 @@ from six import u
 
 from .queue import Queue as PQ
 from .queue import get_failed_queue
-from .flow import Flow
+from .flow import Flow, FlowStore
 from .job import Job
 from .utils import make_colorizer
 from .exceptions import (NoQueueError, UnpickleError,
@@ -78,7 +79,8 @@ class Worker(models.Model):
     @classmethod
     def create(cls, queues, name=None,
             default_result_ttl=PQ_DEFAULT_RESULT_TTL, connection='default',
-            exc_handler=None, default_worker_ttl=PQ_DEFAULT_WORKER_TTL):  # noqa
+            exc_handler=None, default_worker_ttl=PQ_DEFAULT_WORKER_TTL,
+            expires_after=None):  # noqa
         """Create a Worker instance without saving to the backend.
         Workers are not persistent but can register themselves.
         """
@@ -100,7 +102,11 @@ class Worker(models.Model):
         w._stopped = False
         w.log = logger
         w.failed_queue = get_failed_queue(connection)
-        w._clear_expired = True
+        w._clear_expired = None
+        if expires_after:
+            w.expires_after = now() + timedelta(seconds=expires_after)
+        else:
+            w.expires_after = None
 
         # By default, push the "move-to-failed-queue" exception handler onto
         # the stack
@@ -190,15 +196,16 @@ class Worker(models.Model):
             self.birth = now()
             self.queue_names = ','.join(self.get_queue_names())
             self.expire = self.default_worker_ttl
+            self._clear_expired = now()
             self.save()
 
     def register_death(self):
         """Registers its own death deleting the instance"""
-        if self._clear_expired:
-            self.log.debug('Clearing expired jobs from queues.')
-            for q in self.queues:
-                q.delete_expired_ttl()
-            self.log.debug('Registering death')
+        self.log.debug('Clearing expired jobs from queues.')
+        for q in self.queues:
+            q.delete_expired_ttl()
+        FlowStore.delete_expired_ttl(q.connection)
+        self.log.debug('Registering death')
         self.delete()
 
     @property
@@ -296,7 +303,6 @@ class Worker(models.Model):
 
 
                 did_perform_work = True
-                self._clear_expired = True
         finally:
             if not self.is_horse:
                 self.register_death()
@@ -307,11 +313,17 @@ class Worker(models.Model):
             try:
                 return PQ.dequeue_any(self.queues, timeout)
             except DequeueTimeout:
-                if self._clear_expired:
+                delete_expired = self._clear_expired + timedelta(
+                    seconds=self.default_result_ttl)
+                if delete_expired < now():
                     self.log.debug('Clearing expired jobs from queues.')
                     for q in self.queues:
                         q.delete_expired_ttl()
-                    self._clear_expired = False
+                    FlowStore.delete_expired_ttl(q.connection)
+                    self._clear_expired = now()
+                if self.expires_after < now():
+                    raise StopRequested
+
 
     def fork_and_perform_job(self, job):
         """Spawns a work horse to perform the actual work and passes it a job.
