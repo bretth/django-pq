@@ -82,7 +82,7 @@ class FlowStore(models.Model):
         (FAILED, 'failed'),
     )
 
-    name = models.CharField(max_length=100, blank=True)
+    name = models.CharField(max_length=100, default='')
     enqueued_at = models.DateTimeField(null=True, blank=True)
     ended_at = models.DateTimeField(null=True, blank=True)
     expired_at = models.DateTimeField('expires', null=True, blank=True)
@@ -95,6 +95,13 @@ class FlowStore(models.Model):
         verbose_name_plural = 'flows'
 
 
+    def __unicode__(self):
+        if self.id and self.name:
+            return '%i - %s' % (self.id, self.name)
+        elif self.id:
+            return str(self.id)
+        else:
+            return self.name
 class Flow(object):
 
     def __init__(self, queue, name=''):

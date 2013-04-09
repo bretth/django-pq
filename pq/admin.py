@@ -3,6 +3,7 @@ from django.conf import settings
 from django.db.models import F
 from .job import FailedJob, QueuedJob, DequeuedJob
 from .queue import FailedQueue
+from .flow import FlowStore
 
 CONN = getattr(settings, 'PQ_ADMIN_CONNECTION', 'default')
 
@@ -66,7 +67,17 @@ class DequeuedJobAdmin(admin.ModelAdmin):
         return self.model.objects.using(CONN).filter(queue=None)
 
 
+class FlowAdmin(admin.ModelAdmin):
+    list_display = ('__unicode__', 'enqueued_at', 'ended_at', 'status' )
+    ordering = ('id',)
+
+    def __init__(self, *args, **kwargs):
+        super(FlowAdmin, self).__init__(*args, **kwargs)
+        self.list_display_links = (None, )
+
+
 
 admin.site.register(FailedJob, FailedJobAdmin)
 admin.site.register(QueuedJob, QueuedJobAdmin)
 admin.site.register(DequeuedJob, DequeuedJobAdmin)
+admin.site.register(FlowStore, FlowAdmin)
