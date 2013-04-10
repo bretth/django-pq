@@ -55,6 +55,7 @@ class Migration(SchemaMigration):
         db.create_table(u'pq_flowstore', (
             (u'id', self.gf('django.db.models.fields.AutoField')(primary_key=True)),
             ('name', self.gf('django.db.models.fields.CharField')(default='', max_length=100)),
+            ('queue', self.gf('django.db.models.fields.related.ForeignKey')(to=orm['pq.Queue'], null=True, blank=True)),
             ('enqueued_at', self.gf('django.db.models.fields.DateTimeField')(null=True, blank=True)),
             ('ended_at', self.gf('django.db.models.fields.DateTimeField')(null=True, blank=True)),
             ('expired_at', self.gf('django.db.models.fields.DateTimeField')(null=True, blank=True)),
@@ -96,6 +97,7 @@ class Migration(SchemaMigration):
             u'id': ('django.db.models.fields.AutoField', [], {'primary_key': 'True'}),
             'jobs': ('picklefield.fields.PickledObjectField', [], {'blank': 'True'}),
             'name': ('django.db.models.fields.CharField', [], {'default': "''", 'max_length': '100'}),
+            'queue': ('django.db.models.fields.related.ForeignKey', [], {'to': u"orm['pq.Queue']", 'null': 'True', 'blank': 'True'}),
             'status': ('django.db.models.fields.PositiveIntegerField', [], {'null': 'True', 'blank': 'True'})
         },
         u'pq.job': {

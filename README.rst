@@ -1,7 +1,7 @@
 django-pq
 ==========
 
-A task queue based on the elegant RQ_ but with a django postgresql backend, using postgresql's asynchronous notifications to wait for work.
+A task queue with scheduling and simple workflow engine based on the elegant RQ_ but with a django postgresql backend, using postgresql's asynchronous notifications to wait for work.
 
 RQ sets a low barrier for entry, and django-pq takes it lower for sites that can’t or don’t want to use Redis in their stack. By using django-pq you are trading off throughput on cheap tasks for the transactional integrity of Postgresql. For tasks that are expected to complete in a few milliseconds or less such as internal messaging you can expect RQ to be at least 2.5x faster than django-pq. For expensive tasks taking 1/2 a second or more to complete the throughput of RQ and django-pq will be about the same. As such, django-pq is suitable for very low volume messaging or slow running task applications (see benchmarks below).
 
@@ -207,11 +207,44 @@ Tasks can be scheduled at specific times, repeated at intervals, repeated until 
 
 Scheduling is a proposed feature of RQ so the api may change.
 
+WorkFlows
+----------
+
+A simple workflow engine allows executing a specific set of tasks in sequence, each task dependent on the prior one completing. To use this you create a ``Flow`` instance in the ``with`` context which is backed by a FlowStore instance in the django orm.
+
+.. code-block:: python
+
+    from pq import Queue, Flow
+    from datetime import datetime
+
+    q = Queue()
+    with Flow(q) as f:
+        f.enqueue(first_task)
+        f.enqueue_call(another_task, args=(1,2,3))
+        f.schedule(datetime(2020,1,1), mission_to_mars)
+
+    # or name the flow
+    with Flow(q, name='myflow') as f:
+        ...
+
+    # access the job ids
+    f.jobs
+
+    # A Flow is stored in a django FlowStore instance. To retrieve them.
+    fs = f.get(f.id)
+
+    # or get a queryset of FlowStore instances by name
+    fs_list = fs.get('myflow')
+
+    # This is just a shortcut for accessing the FlowStore objects directly through the orm.
+    from pq.flow import FlowStore
+    fs = FlowStore.objects.get(pk=f.id)
+    fs = FlowStore.objects.filter(name='myflow')
 
 Results
 ---------
 
-By default, jobs should execute within 180 seconds. You can alter the default time in your django PQ_DEFAULT_JOB_TIMEOUT setting. After that, the worker kills the work horse and puts the job onto the failed queue, indicating the job timed out.
+By default, jobs should execute within 180 seconds. You can alter the default time in your django ``PQ_DEFAULT_JOB_TIMEOUT`` setting. After that, the worker kills the work horse and puts the job onto the failed queue, indicating the job timed out.
 
 If a job requires more (or less) time to complete, the default timeout period can be loosened (or tightened), by specifying it as a keyword argument to the Queue.enqueue() call, like so:
 
@@ -221,7 +254,7 @@ If a job requires more (or less) time to complete, the default timeout period ca
     q.enqueue(func=mytask, args=(foo,), kwargs={'bar': qux}, timeout=600)
 
 
-Completed jobs hang around for a minimum TTL (time to live) of 500 seconds. Since Postgres doesn’t have an expiry option like Redis the worker will periodically poll the database for jobs to delete hence the minimum TTL. The TTL can be altered per job or through a django setting PQ_DEFAULT_RESULT_TTL.
+Completed jobs hang around for a minimum TTL (time to live) of 500 seconds. Since Postgres doesn’t have an expiry option like Redis the worker will periodically poll the database for jobs to delete hence the minimum TTL. The TTL can be altered per job or through a django setting ``PQ_DEFAULT_RESULT_TTL``. If you are using workflows, a FlowStore instance has the same TTL as its final job, so they will be cleaned up too.
 
 .. code-block:: python
 

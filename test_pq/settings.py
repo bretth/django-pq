@@ -24,15 +24,16 @@ DATABASES = {
     },
 
 }
-
 INSTALLED_APPS = (
     'django.contrib.auth',
     'django.contrib.contenttypes',
     'django.contrib.sessions',
     'django.contrib.admin',
     'pq',
-    #'south',
 )
+if os.getenv('SOUTH'):
+    INSTALLED_APPS += ('south', )
+
 ROOT_URLCONF='test_pq.urls'
 SECRET_KEY = '1234'
 
