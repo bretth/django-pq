@@ -113,7 +113,7 @@ class Queue(models.Model):
         timeout = job.timeout
         scheduled_for = job.scheduled_for + job.interval
         scheduled_for = get_restricted_datetime(scheduled_for, job.between, job.weekdays)
-        # handle trivial repeats
+        # handle trivial repeats where we don't need the scheduler
         if not self.scheduled and (scheduled_for > job.scheduled_for):
             self.scheduled = True
             self.save()
