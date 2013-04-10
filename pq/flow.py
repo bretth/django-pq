@@ -5,6 +5,7 @@ from django.conf import settings
 from django.db import models, transaction
 from django.utils.timezone import now
 from picklefield.fields import PickledObjectField
+from six import integer_types
 
 from .queue import Queue
 from .job import Job
@@ -51,23 +52,6 @@ class FlowQueue(Queue):
 
         return job
 
-    def enqueue(self, func, *args, **kwargs):
-
-        return super(FlowQueue, self).enqueue(func, *args, **kwargs)
-
-    def enqueue_call(self, func, *args, **kwargs):
-
-        return super(FlowQueue, self).enqueue_call(func, *args, **kwargs)
-
-
-    @classmethod
-    def handle_success(cls, job):
-        pass
-
-    @classmethod
-    def handle_failure(cls, job):
-        pass
-
 
 class FlowStore(models.Model):
     """Flow storage """
@@ -83,6 +67,7 @@ class FlowStore(models.Model):
     )
 
     name = models.CharField(max_length=100, default='')
+    queue = models.ForeignKey('Queue', blank=True, null=True)
     enqueued_at = models.DateTimeField(null=True, blank=True)
     ended_at = models.DateTimeField(null=True, blank=True)
     expired_at = models.DateTimeField('expires', null=True, blank=True)
@@ -103,6 +88,19 @@ class FlowStore(models.Model):
         else:
             return self.name
 
+    def enqueue(self, func, *args, **kwargs):
+        return self.queue.enqueue(func, *args, **kwargs)
+
+    def enqueue_call(self, func, *args, **kwargs):
+        return self.queue.enqueue_call(func, *args, **kwargs)
+
+    def schedule(self, *args, **kwargs):
+        return self.queue.schedule(*args, **kwargs)
+
+    def schedule_call(self, *args, **kwargs):
+        return self.queue.schedule_call(*args, **kwargs)
+
+
     @classmethod
     def delete_expired_ttl(cls, connection):
         """Delete jobs from the queue which have expired"""
@@ -117,6 +115,7 @@ class Flow(object):
         queue = FlowQueue.create(name=queue.name)
         self.flowstore = FlowStore(name=name)
         self.flowstore.jobs = []
+        self.flowstore.queue = queue
         self.flowstore.save()
         queue.jobs = OrderedDict()
         self.queue = queue
@@ -124,7 +123,7 @@ class Flow(object):
         self.async = queue._async
 
     def __enter__(self):
-        return self.queue
+        return self.flowstore
 
     def __exit__(self, type, value, traceback):
         for i, job in enumerate(self.queue.jobs.values()):
@@ -147,6 +146,15 @@ class Flow(object):
         if self.async and self.queue.jobs:
             self.flowstore.status = FlowStore.QUEUED
             self.flowstore.save()
+
+    @classmethod
+    def get(cls, id_or_name):
+        if isinstance(id_or_name, integer_types):
+            return FlowStore.objects.get(pk=id_or_name)
+        else:
+            return FlowStore.objects.filter(name=id_or_name)
+
+
 
     @classmethod
     def handle_result(cls, job, queue):
@@ -181,5 +189,3 @@ class Flow(object):
         fs = FlowStore.objects.get(pk=job.flow_id)
         fs.status = FlowStore.FAILED
         fs.save()
-
-
