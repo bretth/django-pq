@@ -68,7 +68,8 @@ class DequeuedJobAdmin(admin.ModelAdmin):
 
 
 class FlowAdmin(admin.ModelAdmin):
-    list_display = ('__unicode__', 'enqueued_at', 'ended_at', 'status' )
+    list_display = ('id', 'name', 'queue', 'enqueued_at', 'ended_at', 'status' )
+    list_filter = ('name', 'queue',)
     ordering = ('id',)
 
     def __init__(self, *args, **kwargs):
