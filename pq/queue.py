@@ -222,10 +222,10 @@ class Queue(models.Model):
 
 
     def schedule_call(self, at, f, args=None, kwargs=None,
-        timeout=None, result_ttl=None, repeat=0, interval=0, between=''):
+        timeout=None, result_ttl=None, repeat=0, interval=0,
+        between='', weekdays=None):
         """
-        As per enqueue_call but friendly positional ``at``
-        datetime argument.
+        As per enqueue_call but with a datetime argument ``at`` first.
 
         ``repeat`` a number of times or infinitely -1 at
         ``interval`` seconds. Interval also accepts a timedelta or
@@ -235,12 +235,15 @@ class Queue(models.Model):
         function will be called for example:
         '0:0/6:00' or '0-6' or '0.0-6.0'
 
+        ``weekdays`` is a tuple or list of relativedelta weekday
+        instances or the same of integers ranging from 0 (MO) to 6 (SU)
+
         """
 
         return self.enqueue_call(func=f, args=args, kwargs=kwargs,
                                  timeout=timeout, result_ttl=result_ttl,
                                  at=at, repeat=repeat, interval=interval,
-                                 between=between)
+                                 between=between, weekdays=weekdays)
 
     def dequeue(self):
         """Dequeues the front-most job from this queue.

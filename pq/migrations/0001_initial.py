@@ -27,7 +27,7 @@ class Migration(SchemaMigration):
             ('repeat', self.gf('picklefield.fields.PickledObjectField')(null=True, blank=True)),
             ('interval', self.gf('picklefield.fields.PickledObjectField')(null=True, blank=True)),
             ('between', self.gf('django.db.models.fields.CharField')(max_length=5, null=True, blank=True)),
-            ('weekdays', self.gf('picklefield.fields.PickledObjectField')(blank=True)),
+            ('weekdays', self.gf('picklefield.fields.PickledObjectField')(null=True, blank=True)),
             ('ended_at', self.gf('django.db.models.fields.DateTimeField')(null=True, blank=True)),
             ('expired_at', self.gf('django.db.models.fields.DateTimeField')(null=True, blank=True)),
             ('result', self.gf('picklefield.fields.PickledObjectField')(null=True, blank=True)),
@@ -46,7 +46,7 @@ class Migration(SchemaMigration):
             ('default_timeout', self.gf('django.db.models.fields.PositiveIntegerField')(null=True, blank=True)),
             ('cleaned', self.gf('django.db.models.fields.DateTimeField')(null=True, blank=True)),
             ('scheduled', self.gf('django.db.models.fields.BooleanField')(default=False)),
-            ('lock_expires', self.gf('django.db.models.fields.DateTimeField')(default=datetime.datetime(2013, 4, 9, 0, 0))),
+            ('lock_expires', self.gf('django.db.models.fields.DateTimeField')(default=datetime.datetime(2013, 4, 10, 0, 0))),
             ('serial', self.gf('django.db.models.fields.BooleanField')(default=False)),
         ))
         db.send_create_signal(u'pq', ['Queue'])
@@ -128,13 +128,13 @@ class Migration(SchemaMigration):
             'status': ('django.db.models.fields.PositiveIntegerField', [], {'null': 'True', 'blank': 'True'}),
             'timeout': ('django.db.models.fields.PositiveIntegerField', [], {'null': 'True', 'blank': 'True'}),
             'uuid': ('django.db.models.fields.CharField', [], {'max_length': '64', 'null': 'True', 'blank': 'True'}),
-            'weekdays': ('picklefield.fields.PickledObjectField', [], {'blank': 'True'})
+            'weekdays': ('picklefield.fields.PickledObjectField', [], {'null': 'True', 'blank': 'True'})
         },
         u'pq.queue': {
             'Meta': {'object_name': 'Queue'},
             'cleaned': ('django.db.models.fields.DateTimeField', [], {'null': 'True', 'blank': 'True'}),
             'default_timeout': ('django.db.models.fields.PositiveIntegerField', [], {'null': 'True', 'blank': 'True'}),
-            'lock_expires': ('django.db.models.fields.DateTimeField', [], {'default': 'datetime.datetime(2013, 4, 9, 0, 0)'}),
+            'lock_expires': ('django.db.models.fields.DateTimeField', [], {'default': 'datetime.datetime(2013, 4, 10, 0, 0)'}),
             'name': ('django.db.models.fields.CharField', [], {'default': "'default'", 'max_length': '100', 'primary_key': 'True'}),
             'scheduled': ('django.db.models.fields.BooleanField', [], {'default': 'False'}),
             'serial': ('django.db.models.fields.BooleanField', [], {'default': 'False'})

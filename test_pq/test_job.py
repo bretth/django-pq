@@ -3,6 +3,7 @@ from datetime import timedelta, datetime
 from django.test import TestCase, TransactionTestCase
 from django.utils.timezone import utc, now
 from dateutil.relativedelta import relativedelta
+from nose2.tools import params
 
 from pq.job import Job
 from pq import Queue
@@ -52,7 +53,7 @@ class TestScheduledJobCreation(TestCase):
         """ Test extra kwargs """
         dt = datetime(2013,1,1, tzinfo=utc)
         rd = relativedelta(months=1, days=-1)
-        job = Job.create(func=some_calculation, 
+        job = Job.create(func=some_calculation,
             args=(3, 4), kwargs=dict(z=2),
             scheduled_for = dt,
             repeat = -1,
@@ -85,7 +86,7 @@ class Test_get_job_or_promise(TransactionTestCase):
         # simulate the default worker timeout
         self.timeout = 60
         future = now() + timedelta(seconds=self.timeout/2)
-        # enqueue a job for 30 seconds time in the future 
+        # enqueue a job for 30 seconds time in the future
         self.job = self.q.schedule_call(future, do_nothing)
 
 
@@ -125,13 +126,13 @@ class Test_get_job_or_promise(TransactionTestCase):
 class Test_get_job_no_promise(TransactionTestCase):
 
     def setUp(self):
-        # setup a job in the very near future which 
+        # setup a job in the very near future which
         # should execute
         self.q = Queue()
         # simulate the default worker timeout
         self.timeout = 60
         future = now() + timedelta(seconds=1)
-        # enqueue a job for 1 second time in the future 
+        # enqueue a job for 1 second time in the future
         self.job = self.q.schedule_call(future, do_nothing)
         time.sleep(1)
 
@@ -143,4 +144,18 @@ class Test_get_job_no_promise(TransactionTestCase):
         self.assertEqual(timeout, self.timeout)
         self.assertEquals(job.id, self.job.id)
         self.assertIsNone(promise)
+
+
+class TestJobSchedule(TestCase):
+
+    def test_job_get_schedule_options(self):
+        """Test the job schedule property"""
+        j = Job.create(
+            do_nothing,
+            interval=600,
+            between='2-4',
+            repeat=10,
+            weekdays=(0,1,2)
+            )
+        self.assertIsNotNone(j.get_schedule_options())
 

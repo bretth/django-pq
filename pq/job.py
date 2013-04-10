@@ -1,13 +1,14 @@
 import importlib
 import inspect
-from datetime import timedelta
+from datetime import timedelta, datetime
 
-from dateutil.relativedelta import relativedelta
+from dateutil.relativedelta import relativedelta, weekday
+from dateutil.relativedelta import weekdays as wdays
 from picklefield.fields import PickledObjectField
 from django.db import models
 from django.db import transaction
 from django.utils.timezone import now
-from six import get_method_self
+from six import get_method_self, integer_types
 
 from .exceptions import InvalidInterval
 
@@ -47,7 +48,7 @@ class Job(models.Model):
     interval = PickledObjectField(null=True, blank=True,
             help_text="Timedelta till next job")
     between = models.CharField(max_length=5, null=True, blank=True)
-    weekdays = PickledObjectField(blank=True)
+    weekdays = PickledObjectField(blank=True, null=True)
     ended_at = models.DateTimeField(null=True, blank=True)
     expired_at = models.DateTimeField('expires', null=True, blank=True)
     result = PickledObjectField(null=True, blank=True)
@@ -96,6 +97,7 @@ class Job(models.Model):
         job.scheduled_for = scheduled_for
         job.interval = interval
         job.repeat = repeat
+        job.weekdays = weekdays
         job.clean()
         return job
 
@@ -154,6 +156,38 @@ class Job(models.Model):
         module = importlib.import_module(module_name)
         return getattr(module, func_name)
 
+
+    def get_schedule_options(self):
+        """Humanized schedule options"""
+        s = ['repeat']
+        if isinstance(self.repeat, integer_types) and self.repeat < 0:
+            s.append('forever')
+        elif isinstance(self.repeat, integer_types):
+            s.append('%i times' % self.repeat)
+        elif isinstance(self.repeat, datetime):
+            s.append('until %s,' % self.repeat.isoformat()[:16])
+
+        if self.interval:
+            s.append('every %s' % str(self.interval))
+
+        if self.between:
+            s.append('between %s' % self.between)
+        if self.weekdays:
+            s.append('on')
+            for day in self.weekdays:
+                if isinstance(day, weekday):
+                    s.append('%s,' % str(day))
+                else:
+                    s.append('%s,' % str(wdays[day]))
+        s = ' '.join(s)
+        if s[-1] == ',':
+            s = s[:-1]
+        first_letter = s[0].capitalize()
+        s = first_letter + s[1:]
+        return s
+    get_schedule_options.short_description = 'schedule options'
+
+
     def get_ttl(self, default_ttl=None):
         """Returns ttl for a job that determines how long a job and its result
         will be persisted. In the future, this method will also be responsible
@@ -174,6 +208,7 @@ class Job(models.Model):
         args = ', '.join(arg_list)
         return '%s(%s)' % (self.func_name, args)
 
+
     # Job execution
     def perform(self):  # noqa
         """Invokes the job function with the job arguments."""
@@ -182,7 +217,7 @@ class Job(models.Model):
 
     def clean(self):
         if isinstance(self.interval, int) and self.interval >= 0:
-                self.interval = timedelta(seconds=self.interval)
+                self.interval = relativedelta(seconds=self.interval)
         elif self.scheduled_for and not (
                 isinstance(self.interval, timedelta) or
                 isinstance(self.interval, relativedelta)):
