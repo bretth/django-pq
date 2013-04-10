@@ -210,7 +210,7 @@ Scheduling is a proposed feature of RQ so the api may change.
 WorkFlows
 ----------
 
-A simple workflow engine allows executing a specific set of tasks in sequence, each task dependent on the prior one completing. To use this you create a ``Flow`` instance in the ``with`` context which is backed by a FlowStore instance in the django orm.
+A simple workflow engine class ``Flow`` allows executing a specific set of tasks in sequence, each task dependent on the prior one completing.
 
 .. code-block:: python
 
@@ -240,6 +240,8 @@ A simple workflow engine allows executing a specific set of tasks in sequence, e
     from pq.flow import FlowStore
     fs = FlowStore.objects.get(pk=f.id)
     fs = FlowStore.objects.filter(name='myflow')
+
+Workflows are not part of RQ.
 
 Results
 ---------
@@ -337,7 +339,7 @@ To implement a worker in code:
 Monitoring & Admin
 ----------------------
 
-Jobs are monitored or administered as necessary through the django admin. Three admin changelist views show queued jobs, failed jobs, and jobs that have been popped from the queue (in progress, finished or orphaned). Admin actions allow jobs to be requeued or deleted.
+Jobs are monitored or administered as necessary through the django admin. Four admin changelist views show flows, queued jobs, failed jobs, and jobs that have been popped from the queue (in progress, finished or orphaned). Admin actions allow jobs to be requeued or deleted.
 
 Connections
 ------------
@@ -450,8 +452,10 @@ Unit testing with tox, nose2 and my nose2django plugin. To run the tests, clone 
 
 .. code-block:: bash
 
-    $ pip install -r requirements
-    $ nose2
+    $ pip install tox
+    $ tox
+
+
 
 I have been judicious about which tests were ported across from RQ, but hooray for tests. To make it easier to panel-beat smashed code django-pq does use setUp as its creator intended.
 
