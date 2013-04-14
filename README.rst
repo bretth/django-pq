@@ -16,6 +16,8 @@ Installation
 
     $ pip install django-pq
 
+Add ``pq`` to your ``INSTALLED_APPS`` in your django settings.
+
 You must ensure your Postgresql connections options have autocommit set to True. This is enabled by default beyond Django 1.5 but in 1.5 and earlier you should set it via ``'OPTIONS': {'autocommit': True}`` in your database settings.
 
 Getting started
