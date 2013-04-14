@@ -113,14 +113,17 @@ Enqueue your jobs in any of the following ways:
 
 .. code-block:: python
 
-    q.enqueue(say_hello, kwargs='You')
+    q.enqueue(say_hello, 'You')
+    q.enqueue_call(say_hello, args=('You',))
+    q.enqueue_call(say_call, kwargs={'name': 'You'})
 
     # then with a shorter timeout than 10 minutes
-    q.enqueue(say_hello, timeout=60)
+    q.enqueue_call(say_hello, args=('again',), timeout=60)
 
     #Instance methods:
     calc = Calculator(2)
-    q.enqueue(calc.calculate, args=(4,5))
+    q.enqueue(calc.calculate, 4, 5)
+    q.enqueue_call(calc.calculate, args=(4,5))
 
     # with the @job decorator
     from pq.decorators import job
@@ -134,7 +137,7 @@ Enqueue your jobs in any of the following ways:
         return 'Hi there, %s!' % (name,)
 
     # add a job to the queue
-    job = add.delay(kwargs='friend')
+    job = say_hello.delay('friend')
 
 
 Serial Queues
