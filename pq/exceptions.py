@@ -10,6 +10,10 @@ class NoQueueError(Exception):
     pass
 
 
+class InvalidQueueName(Exception):
+    pass
+
+
 class MulipleQueueConnectionsError(Exception):
     pass
 

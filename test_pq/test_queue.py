@@ -3,23 +3,34 @@ import multiprocessing
 from datetime import datetime, timedelta
 from django.utils.timezone import utc, now
 from django.test import TestCase, TransactionTestCase
-
+from nose2.tools import params
 
 from pq import Queue
 from pq.queue import Queue as PQ
 from pq.queue import FailedQueue, get_failed_queue
 from pq.job import Job
 from pq.worker import Worker
-from pq.exceptions import DequeueTimeout
+from pq.exceptions import DequeueTimeout, InvalidQueueName
 
-from .fixtures import (say_hello, Calculator, 
+
+from .fixtures import (say_hello, Calculator,
     div_by_zero, some_calculation, do_nothing)
+
+
 
 class TestQueueCreation(TransactionTestCase):
 
     def test_default_queue_create(self):
         queue = Queue()
         self.assertEqual(queue.name, 'default')
+
+
+class TestQueueNameValidation(TestCase):
+
+    @params('failed', 'invalid queue)')
+    def test_validated_name(self, name):
+        with self.assertRaises(InvalidQueueName):
+            PQ.validated_name(name)
 
 
 class TestQueueInstanceMethods(TransactionTestCase):
@@ -335,8 +346,8 @@ class TestEnqueueNext(TransactionTestCase):
 
     def setUp(self):
         self.q = Queue()
-        self.job = Job.create(func=some_calculation, 
-            args=(3, 4), 
+        self.job = Job.create(func=some_calculation,
+            args=(3, 4),
             kwargs=dict(z=2),
             repeat=1,
             interval=60)
@@ -347,7 +358,7 @@ class TestEnqueueNext(TransactionTestCase):
         job = self.q.enqueue_next(self.job)
         self.assertIsNotNone(job.id)
         self.assertNotEqual(job.id, self.job.id)
-        self.assertEqual(job.scheduled_for, 
+        self.assertEqual(job.scheduled_for,
             self.job.scheduled_for + self.job.interval)
 
     def test_schedule_repeat_infinity(self):
@@ -365,5 +376,3 @@ class TestEnqueueNext(TransactionTestCase):
         self.assertIsNotNone(job.id)
         self.assertNotEqual(job.id, self.job.id)
         self.assertEqual(job.repeat, self.job.repeat)
-
-

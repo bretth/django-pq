@@ -12,7 +12,8 @@ from six import string_types
 
 from .job import Job
 from .utils import get_restricted_datetime
-from .exceptions import DequeueTimeout, InvalidBetween, InvalidInterval
+from .exceptions import (DequeueTimeout, InvalidBetween,
+                         InvalidInterval, InvalidQueueName)
 
 PQ_DEFAULT_JOB_TIMEOUT = getattr(settings, 'PQ_DEFAULT_JOB_TIMEOUT', 180)
 
@@ -63,11 +64,25 @@ class Queue(models.Model):
                connection='default', async=True):
         """Returns a Queue ready for accepting jobs"""
         queue, created = cls.objects.using(connection).get_or_create(
-            name=name, defaults={'default_timeout': default_timeout})
+            name=cls.validated_name(name),
+            defaults={'default_timeout': default_timeout})
         queue.connection = connection
         queue._async = async
 
         return queue
+
+    @classmethod
+    def validated_name(cls, name):
+        """Ensure there is no closing parenthesis"""
+        name = name.strip()
+        # Need to allow specifying an alternate class of queue with the same
+        # base name. We use the queue type in parenthesis appended to the end
+        # of the name
+        if name[-1] == ')':
+            raise InvalidQueueName("A queue name cannot end in ')'")
+        elif name.lower() == 'failed':
+            raise InvalidQueueName("'failed' is a reserved queue name")
+        return name
 
 
     @classmethod
@@ -359,13 +374,21 @@ class SerialQueue(Queue):
                name='default', default_timeout=None,
                connection='default', async=True):
         """Returns a Queue ready for accepting jobs"""
+
         queue, created = cls.objects.using(connection).get_or_create(
-            name=name, serial=True,
+            name=cls.validated_name(name),
+            serial=True,
             defaults={'default_timeout': default_timeout})
         queue.connection = connection
         queue._async = async
 
         return queue
+
+    @classmethod
+    def validated_name(self, name):
+        """Create a serial queue name"""
+        return '%s (serial)' % super(SerialQueue, self).validated_name(name)
+
 
     def acquire_lock(self, timeout=0, no_wait=True):
         try:
@@ -393,6 +416,10 @@ class SerialQueue(Queue):
 class FailedQueue(Queue):
     class Meta:
         proxy = True
+
+    @classmethod
+    def validated_name(self, name):
+        return name
 
     @classmethod
     def create(cls, connection='default'):

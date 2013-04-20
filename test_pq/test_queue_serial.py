@@ -4,6 +4,7 @@ from datetime import datetime, timedelta
 from django.utils.timezone import utc, now
 from django.test import TestCase
 
+from pq import Worker
 from pq.queue import SerialQueue, Queue
 from pq.exceptions import DequeueTimeout
 
@@ -13,9 +14,18 @@ from .fixtures import do_nothing
 
 class TestSerialQueueCreate(TestCase):
 
-    def test_serial_queue_create(self): 
+    def test_serial_queue_create(self):
         sq = SerialQueue.create()
         self.assertTrue(sq.serial)
+
+
+class TestQueueCreationTwoQueueTypes(TestCase):
+
+    def test_default_queue_create_multiple(self):
+        queue = Queue.create()
+        self.assertEqual(queue.name, 'default')
+        queue = SerialQueue.create()
+        self.assertEqual(queue.name, 'default (serial)')
 
 
 class TestSerialQueueMethods(TestCase):
@@ -24,7 +34,7 @@ class TestSerialQueueMethods(TestCase):
         self.sq = SerialQueue.create()
 
     def test_acquire_lock(self):
-        """Acquire a lock for an arbitrary time""" 
+        """Acquire a lock for an arbitrary time"""
         self.assertTrue(self.sq.acquire_lock(60))
 
 
@@ -66,6 +76,7 @@ class TestDequeueAnyLockedSerialJobs(TestCase):
         with self.assertRaises(DequeueTimeout):
             Queue.dequeue_any([self.sq], timeout=1)
 
+
 class TestDequeueLockExpiresSerialJobs(TestCase):
 
     def setUp(self):
@@ -78,17 +89,21 @@ class TestDequeueLockExpiresSerialJobs(TestCase):
         time.sleep(1)
         job, queue = Queue.dequeue_any([self.sq], timeout=1)
         self.assertEquals(self.job.id, job.id)
-            
 
 
+class TestQueueCreationConflictIssue2(TestCase):
+    "https://github.com/bretth/django-pq/issues/2"
 
+    def setUp(self):
+        self.q = SerialQueue.create()
+        self.assertTrue(self.q.serial)
 
-
-        
-
-
-
-
-
-
+    def test_queue_creation_conflict_issue2(self):
+        """Ordinary queue shouldn't ever become a serial queue"""
+        q = Queue.create()
+        self.assertFalse(q.serial)
+        q.enqueue(do_nothing)
+        self.q.enqueue(do_nothing)
+        w = Worker([q, self.q])
+        w.work(burst=True)
 
