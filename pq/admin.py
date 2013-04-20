@@ -26,7 +26,7 @@ class FailedJobAdmin(admin.ModelAdmin):
 
     def queryset(self, request):
         return self.model.objects.using(
-            CONN).filter(queue_id='failed')
+            CONN).filter(queue__name='failed')
 
 
 class QueuedJobAdmin(admin.ModelAdmin):
@@ -42,7 +42,7 @@ class QueuedJobAdmin(admin.ModelAdmin):
 
     def queryset(self, request):
         return self.model.objects.using(
-            CONN).all().exclude(queue_id='failed').exclude(queue=None)
+            CONN).all().exclude(queue__name='failed').exclude(queue=None)
 
 
 def requeue_jobs(modeladmin, request, queryset):
