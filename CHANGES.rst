@@ -4,6 +4,12 @@
 Changelog
 ---------
 
+v0.3.1 (2013-04-20)
+^^^^^^^^^^^^^^^^^^^
+
+- Fix issue with serial queue names
+- admin fixes
+
 v0.3 (2013-04-10)
 ^^^^^^^^^^^^^^^^^
 
