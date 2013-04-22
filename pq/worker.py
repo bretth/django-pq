@@ -321,7 +321,7 @@ class Worker(models.Model):
                         q.delete_expired_ttl()
                     FlowStore.delete_expired_ttl(q.connection)
                     self._clear_expired = now()
-                if self.expires_after < now():
+                if self.expires_after and self.expires_after < now():
                     raise StopRequested
 
 
