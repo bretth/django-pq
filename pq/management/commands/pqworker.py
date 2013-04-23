@@ -45,7 +45,7 @@ class Command(BaseCommand):
         if sentry_dsn:
             from raven import Client
             from pq.contrib.sentry import register_sentry
-            client = Client(args.sentry_dsn)
+            client = Client(sentry_dsn)
             register_sentry(client, w)
 
         w.work(burst=options['burst'])
