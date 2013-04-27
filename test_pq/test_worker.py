@@ -1,7 +1,7 @@
 import os
 import time
 import times
-from django.test import TransactionTestCase
+from django.test import TransactionTestCase, TestCase
 from nose2.tools import params
 
 from pq import Queue
@@ -62,6 +62,7 @@ class TestWorkViaStringArg(TransactionTestCase):
 class TestWorkIsUnreadable(TransactionTestCase):
     def setUp(self):
         self.q = Queue()
+        self.q.save()
         self.fq = get_failed_queue()
         self.w = Worker.create([self.q])
 
@@ -214,3 +215,18 @@ class TestWorkerDeletesExpiredTTL(TransactionTestCase):
         self.w.work(burst=True)
         with self.assertRaises(Job.DoesNotExist) as exc:
             rjob = Job.objects.get(id=self.job.id)
+
+
+class TestWorkerDequeueTimeout(TestCase):
+    """Simple test to ensure the worker finishes"""
+
+    def setUp(self):
+        self.q = Queue()
+        self.w = Worker.create([self.q],
+            expires_after=1,
+            default_worker_ttl=1)
+
+    def test_worker_dequeue_timeout(self):
+        self.w.work()
+        self.assertEqual(self.w._expires_after, -1)
+

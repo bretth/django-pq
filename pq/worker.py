@@ -103,10 +103,8 @@ class Worker(models.Model):
         w.log = logger
         w.failed_queue = get_failed_queue(connection)
         w._clear_expired = None
-        if expires_after:
-            w.expires_after = now() + timedelta(seconds=expires_after)
-        else:
-            w.expires_after = None
+        # Worker expires after x loops ( for internal testing use)
+        w._expires_after = expires_after
 
         # By default, push the "move-to-failed-queue" exception handler onto
         # the stack
@@ -308,8 +306,21 @@ class Worker(models.Model):
                 self.register_death()
         return did_perform_work
 
+    @property
+    def _dequeue_loop(self):
+        """Helper function to control the loop in tests"""
+        if self._expires_after == None:
+            return True
+        elif self._expires_after < 0:
+            raise StopRequested
+        elif self._expires_after >= 0:
+            self._expires_after -= 1
+            return True
+        else:
+            return True
+
     def dequeue_job_and_maintain_ttl(self, timeout):
-        while True:
+        while self._dequeue_loop:
             try:
                 return PQ.dequeue_any(self.queues, timeout)
             except DequeueTimeout:
@@ -321,8 +332,6 @@ class Worker(models.Model):
                         q.delete_expired_ttl()
                     FlowStore.delete_expired_ttl(q.connection)
                     self._clear_expired = now()
-                if self.expires_after and self.expires_after < now():
-                    raise StopRequested
 
 
     def fork_and_perform_job(self, job):

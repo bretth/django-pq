@@ -103,7 +103,7 @@ class TestFlowStoreExpiredTTLOnDequeue(TestCase):
 
     def setUp(self):
         self.q = Queue()
-        self.w = Worker(self.q, default_result_ttl=1, default_worker_ttl=2.1, expires_after=2)
+        self.w = Worker(self.q, default_result_ttl=1, default_worker_ttl=2.1, expires_after=1)
         with Flow(self.q, name='test') as f:
             self.n_job = f.enqueue(do_nothing)
 
@@ -111,9 +111,6 @@ class TestFlowStoreExpiredTTLOnDequeue(TestCase):
         self.w.work()
         with self.assertRaises(FlowStore.DoesNotExist):
             fs = FlowStore.objects.get(name='test')
-
-
-
 
 
 class TestFlowStoreFailed(TestCase):
