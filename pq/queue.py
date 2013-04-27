@@ -54,6 +54,7 @@ class Queue(models.Model):
     lock_expires = models.DateTimeField(default=now())
     serial = models.BooleanField(default=False)
     _async = True
+    _created = False
 
     def __unicode__(self):
         return self.name
@@ -63,27 +64,25 @@ class Queue(models.Model):
                name='default', default_timeout=None,
                connection='default', async=True):
         """Returns a Queue ready for accepting jobs"""
-        queue, created = cls.objects.using(connection).get_or_create(
-            name=cls.validated_name(name),
-            defaults={'default_timeout': default_timeout})
+        queue = cls(name=cls.validated_name(name),
+                    default_timeout=default_timeout)
         queue.connection = connection
         queue._async = async
-
         return queue
 
     @classmethod
     def validated_name(cls, name):
         """Ensure there is no closing parenthesis"""
         name = name.strip()
-        # Need to allow specifying an alternate class of queue with the same
-        # base name. We use the queue type in parenthesis appended to the end
-        # of the name
-        if name[-1] == ')':
-            raise InvalidQueueName("A queue name cannot end in ')'")
-        elif name.lower() == 'failed':
+        if name.lower() == 'failed':
             raise InvalidQueueName("'failed' is a reserved queue name")
         return name
 
+    @classmethod
+    def validate_queue(cls, name):
+        q, created = cls.objects.get_or_create(name=name)
+        if q.serial:
+            raise InvalidQueueName("%s is a serial queue" % name)
 
     @classmethod
     def all(cls, connection='default'):
@@ -130,8 +129,11 @@ class Queue(models.Model):
         scheduled_for = get_restricted_datetime(scheduled_for, job.between, job.weekdays)
         # handle trivial repeats where we don't need the scheduler
         if not self.scheduled and (scheduled_for > job.scheduled_for):
-            self.scheduled = True
-            self.save()
+            scheduled = True
+        else:
+            scheduled = False
+        self.save_new_or_scheduled_queue(scheduled)
+
         job = Job.create(job.func, job.args, job.kwargs, connection=job.connection,
                          result_ttl=job.result_ttl,
                          scheduled_for=scheduled_for,
@@ -154,11 +156,14 @@ class Queue(models.Model):
         contain options for PQ itself.
         """
         timeout = timeout or self.default_timeout
+
+        at = get_restricted_datetime(at, between, weekdays)
         # Scheduled tasks require a slower query
         if at and not self.scheduled:
-            self.scheduled = True
-            self.save()
-        at = get_restricted_datetime(at, between, weekdays)
+            scheduled = True
+        else:
+            scheduled = False
+        self.save_new_or_scheduled_queue(scheduled)
         job = Job.create(func, args, kwargs, connection=self.connection,
                          result_ttl=result_ttl,
                          scheduled_for=at,
@@ -362,6 +367,16 @@ class Queue(models.Model):
         cursor.execute("SELECT pg_notify(%s, %s);", (self.name, str(job_id)))
         cursor.close()
 
+    def save_new_or_scheduled_queue(self, scheduled=False):
+        """Validate and save the queue only if it needs saving"""
+        if not self._created:
+            self.validate_queue(self.name)
+        if scheduled:
+            self.scheduled = True
+        if not self._created or scheduled:
+            self.save()
+            self._created = True
+
 
 class SerialQueue(Queue):
     """A queue with a lock"""
@@ -371,24 +386,21 @@ class SerialQueue(Queue):
 
     @classmethod
     def create(cls,
-               name='default', default_timeout=None,
+               name='serial', default_timeout=None,
                connection='default', async=True):
         """Returns a Queue ready for accepting jobs"""
-
-        queue, created = cls.objects.using(connection).get_or_create(
-            name=cls.validated_name(name),
-            serial=True,
-            defaults={'default_timeout': default_timeout})
+        queue = cls(name=cls.validated_name(name),
+                    default_timeout=default_timeout)
         queue.connection = connection
-        queue._async = async
-
+        queue._aysnc = async
+        queue.serial=True
         return queue
 
     @classmethod
-    def validated_name(self, name):
-        """Create a serial queue name"""
-        return '%s (serial)' % super(SerialQueue, self).validated_name(name)
-
+    def validate_queue(cls, name):
+        q, created = cls.objects.get_or_create(name=name)
+        if not created and not q.serial:
+            raise InvalidQueueName("%s is not a serial queue" % name)
 
     def acquire_lock(self, timeout=0, no_wait=True):
         try:
@@ -423,7 +435,9 @@ class FailedQueue(Queue):
 
     @classmethod
     def create(cls, connection='default'):
-        return super(FailedQueue, cls).create('failed', connection=connection)
+        fq = super(FailedQueue, cls).create('failed', connection=connection)
+        fq.save()
+        return fq
 
     def quarantine(self, job, exc_info):
         """Puts the given Job in quarantine (i.e. put it on the failed

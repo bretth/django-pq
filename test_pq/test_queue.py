@@ -27,10 +27,9 @@ class TestQueueCreation(TransactionTestCase):
 
 class TestQueueNameValidation(TestCase):
 
-    @params('failed', 'invalid queue)')
-    def test_validated_name(self, name):
+    def test_validated_name(self):
         with self.assertRaises(InvalidQueueName):
-            PQ.validated_name(name)
+            PQ.validated_name('failed')
 
 
 class TestQueueInstanceMethods(TransactionTestCase):
@@ -50,6 +49,7 @@ class TestEnqueue(TransactionTestCase):
 
     def setUp(self):
         self.q = Queue()
+        self.q.save()
         self.job = Job.create(func=say_hello, args=('Nick',), kwargs=dict(foo='bar'))
 
 
@@ -214,6 +214,7 @@ class TestFQueueQuarantineTimeout(TransactionTestCase):
 class TestRequeue(TransactionTestCase):
 
     def setUp(self):
+        Queue('fake').save()
         job = Job.create(func=div_by_zero, args=(1, 2, 3))
         job.origin = 'fake'
         job.save()

@@ -25,13 +25,14 @@ class TestQueueCreationTwoQueueTypes(TestCase):
         queue = Queue.create()
         self.assertEqual(queue.name, 'default')
         queue = SerialQueue.create()
-        self.assertEqual(queue.name, 'default (serial)')
+        self.assertEqual(queue.name, 'serial')
 
 
 class TestSerialQueueMethods(TestCase):
 
     def setUp(self):
         self.sq = SerialQueue.create()
+        self.sq.save()
 
     def test_acquire_lock(self):
         """Acquire a lock for an arbitrary time"""
@@ -42,6 +43,7 @@ class TestSerialQueueLock(TestCase):
 
     def setUp(self):
         self.sq = SerialQueue.create()
+        self.sq.save()
         self.sq.acquire_lock(1)
 
     def test_acquire_already_locked(self):
