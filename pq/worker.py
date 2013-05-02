@@ -60,6 +60,15 @@ def signal_name(signum):
     except KeyError:
         return 'SIG_UNKNOWN'
 
+def close_connection():
+    # Hackety-hack-hack for django_postgrespool
+    for conn in connections.all():
+        if hasattr(conn, '_dispose'):
+            conn._dispose()
+        else:
+            conn.close()
+
+
 class Worker(models.Model):
 
     name = models.CharField(max_length=254, primary_key=True)
@@ -296,7 +305,7 @@ class Worker(models.Model):
                 job, queue = result
                 self.log.info('%s: %s (%s)' % (green(queue.name),
                     blue(job.description), job.id))
-
+                close_connection()
                 self.fork_and_perform_job(job)
 
 
