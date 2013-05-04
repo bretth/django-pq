@@ -32,7 +32,7 @@ from .exceptions import (NoQueueError, UnpickleError,
                          MulipleQueueConnectionsError)
 from .timeouts import death_penalty_after
 
-from .version import __version__ as VERSION
+from . import __version__ as VERSION
 
 
 green = make_colorizer('darkgreen')
