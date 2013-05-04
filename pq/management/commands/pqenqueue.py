@@ -30,6 +30,6 @@ class Command(BaseCommand):
         timeout = options.get('timeout')
         q = Queue(options['queue'])
         if timeout:
-            q.enqueue(func, *args, timeout=timout)
+            q.enqueue(func, *args, timeout=timeout)
         else:
             q.enqueue(func, *args)
