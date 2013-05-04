@@ -20,6 +20,11 @@ Add ``pq`` to your ``INSTALLED_APPS`` in your django settings.
 
 You must ensure your Postgresql connections options have autocommit set to True. This is enabled by default beyond Django 1.5 but in 1.5 and earlier you should set it via ``'OPTIONS': {'autocommit': True}`` in your database settings.
 
+Note::
+    
+    The django-pq worker depends on postgresql messaging (LISTEN and NOTIFY) to avoid polling the database. This functionality may not be available on all postgresql installations, and connection pooling may also prevent messaging from working correctly. In the event jobs are not being received instantly you can set ``PQ_DEFAULT_WORKER_TTL = 60`` to poll the database for jobs every 60 seconds. To test if your jobs will go through instantly run ``python manage.py pqworker default`` (a worker on the 'default' queue) in one terminal and a test job in another terminal, ``python manage.py pqenqueue pq.utils.test_job``.
+
+
 Getting started
 ----------------
 
@@ -50,7 +55,7 @@ Consume your queue with a worker.
 
 .. code-block:: bash
 
-    $ pqworker --burst
+    $ python manage.py pqworker --burst
     *** Listening for work on default
     Got count_words_at_url('http://python-rq.org') from default
     Job result = 818
@@ -140,6 +145,13 @@ Enqueue your jobs in any of the following ways:
 
     # add a job to the queue
     job = say_hello.delay('friend')
+
+Finally, there is a management command to enqueue from the command line:
+
+.. code-block:: bash
+
+    $python manage.py pqenqueue pq.utils.test_job
+    $python manage.py pqenqueue test_pq.fixtures.say_hello Bob --timeout=10
 
 
 Serial Queues
@@ -276,7 +288,7 @@ Work is done through pqworker, a django management command. To accept work on th
 
 .. code-block:: bash
 
-    $ ./manage.py pqworker high default low
+    $ python manage.py pqworker high default low
     *** Listening for work on high, default, low
     Got send_newsletter('me@example.com') from default
     Job ended normally without result
@@ -296,15 +308,15 @@ If you don’t see any output you might need to configure your django project LO
         },
         'handlers': {
             'console':{
-                'level':'DEBUG',
+                'level':'INFO',
                 'class':"logging.StreamHandler",
                 'formatter': 'standard'
             },
         },
         'loggers': {
-            'pq.management.commands.pqworker': {
+            'pq': {
                 'handlers': ['console'],
-                'level': 'DEBUG',
+                'level': 'INFO',
                 'propagate': True
             },
         }
@@ -345,6 +357,8 @@ Monitoring & Admin
 ----------------------
 
 Jobs are monitored or administered as necessary through the django admin. Four admin changelist views show flows, queued jobs, failed jobs, and jobs that have been popped from the queue (in progress, finished or orphaned). Admin actions allow jobs to be requeued or deleted.
+
+In the event the worker is terminated before the job is complete, the job will remain in the dequeued admin list with a 'started' status.  
 
 Connections
 ------------
