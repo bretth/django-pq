@@ -235,3 +235,7 @@ class ColorizingStreamHandler(logging.StreamHandler):
             message = '\n'.join(parts)
 
         return message
+
+def test_job():
+    """ A simple do nothing test job """
+    print('Hello world')
