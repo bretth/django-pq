@@ -20,9 +20,7 @@ Add ``pq`` to your ``INSTALLED_APPS`` in your django settings.
 
 You must ensure your Postgresql connections options have autocommit set to True. This is enabled by default beyond Django 1.5 but in 1.5 and earlier you should set it via ``'OPTIONS': {'autocommit': True}`` in your database settings.
 
-Note::
-    
-    The django-pq worker depends on postgresql messaging (LISTEN and NOTIFY) to avoid polling the database. This functionality may not be available on all postgresql installations, and connection pooling may also prevent messaging from working correctly. In the event jobs are not being received instantly you can set ``PQ_DEFAULT_WORKER_TTL = 60`` to poll the database for jobs every 60 seconds. To test if your jobs will go through instantly run ``python manage.py pqworker default`` (a worker on the 'default' queue) in one terminal and a test job in another terminal, ``python manage.py pqenqueue pq.utils.test_job``.
+
 
 
 Getting started
@@ -351,6 +349,12 @@ To implement a worker in code:
 
     w = Worker(q)
     w.work(burst=True)
+
+
+Troubleshooting Workers
+------------------------
+ 
+The django-pq worker depends on postgresql messaging (LISTEN and NOTIFY) to avoid polling the database. This functionality may not be available on all postgresql installations, and connection pooling may also prevent messaging from working correctly. In the event jobs are not being received instantly you can set ``PQ_DEFAULT_WORKER_TTL = 60`` to poll the database for jobs every 60 seconds. To test if your jobs will go through instantly run ``python manage.py pqworker default`` (a worker on the 'default' queue) in one terminal and a test job in another terminal, ``python manage.py pqenqueue pq.utils.test_job``.
 
 
 Monitoring & Admin
