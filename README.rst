@@ -328,7 +328,7 @@ To exit after all work is consumed:
 
 .. code-block:: bash
 
-    $ ./manage.py pqworker default —burst
+    $ ./manage.py pqworker default —-burst
 
 More examples:
 
