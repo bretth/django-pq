@@ -29,7 +29,7 @@ class Command(BaseCommand):
 
         """
         from django.conf import settings
-        from pq.queue import Queue
+        from pq.queue import Queue, SerialQueue
         from pq.worker import Worker
 
         sentry_dsn = options.get('sentry_dsn')
@@ -37,8 +37,13 @@ class Command(BaseCommand):
             sentry_dsn = settings.SENTRY_DSN if hasattr(settings, 'SENTRY_DSN') else None
 
         verbosity = int(options.get('verbosity'))
-
-        queues = list(map(Queue.create, args))
+        queues = []
+        for queue in args:
+            q = Queue.objects.get(name=queue)
+            if q.serial:
+                queues.append(SerialQueue.objects.get(name=queue))
+            else:
+                queues.append(Queue.objects.get(name=queue))
         w = Worker.create(queues, name=options.get('name'), connection=options['connection'])
 
         # Should we configure Sentry?

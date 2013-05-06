@@ -2,7 +2,7 @@
 import time
 from datetime import datetime, timedelta
 from django.utils.timezone import utc, now
-from django.test import TestCase
+from django.test import TestCase, TransactionTestCase
 
 from pq import Worker
 from pq.queue import SerialQueue, Queue
@@ -93,7 +93,7 @@ class TestDequeueLockExpiresSerialJobs(TestCase):
         self.assertEquals(self.job.id, job.id)
 
 
-class TestQueueCreationConflictIssue2(TestCase):
+class TestQueueCreationConflictIssue2(TransactionTestCase):
     "https://github.com/bretth/django-pq/issues/2"
 
     def setUp(self):
