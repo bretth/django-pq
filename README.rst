@@ -18,7 +18,7 @@ Installation
 
 Add ``pq`` to your ``INSTALLED_APPS`` in your django settings.
 
-You must ensure your Postgresql connections options have autocommit set to True. This is enabled by default beyond Django 1.5 but in 1.5 and earlier you should set it via ``'OPTIONS': {'autocommit': True}`` in your database settings. You may also need to set ``PQ_DEFAULT_WORKER_TTL`` if you use pooling software or your postgresql installation does not support Postgresql messaging. See [Troubleshooting Workers][] for more.
+You must ensure your Postgresql connections options have autocommit set to True. This is enabled by default beyond Django 1.5 but in 1.5 and earlier you should set it via ``'OPTIONS': {'autocommit': True}`` in your database settings. You may also need to set ``PQ_DEFAULT_WORKER_TTL`` if you use pooling software or your postgresql installation does not support Postgresql messaging. See `Troubleshooting Workers`_ for more.
 
 Getting started
 ----------------
