@@ -1,6 +1,6 @@
 import time
 from datetime import datetime, timedelta
-from django.test import TestCase
+from django.test import TestCase, TransactionTestCase
 from django.test.utils import override_settings
 from django.utils.timezone import now
 
@@ -36,7 +36,7 @@ class TestFlowCreate(TestCase):
         self.assertIsNone(n_job.queue_id)
 
 
-class TestFlowPerform(TestCase):
+class TestFlowPerform(TransactionTestCase):
 
     def setUp(self):
         self.q = Queue()
@@ -54,7 +54,7 @@ class TestFlowPerform(TestCase):
         self.assertEqual(self.q.count, 0)
 
 
-class TestFlowStore(TestCase):
+class TestFlowStore(TransactionTestCase):
 
     def setUp(self):
         self.q = Queue()
@@ -82,7 +82,7 @@ class TestFlowStore(TestCase):
         self.assertIsNotNone(fs.expired_at)
 
 
-class TestFlowStoreExpiredTTL(TestCase):
+class TestFlowStoreExpiredTTL(TransactionTestCase):
 
     def setUp(self):
         self.q = Queue()
@@ -99,7 +99,7 @@ class TestFlowStoreExpiredTTL(TestCase):
             fs = FlowStore.objects.get(name='test')
 
 
-class TestFlowStoreExpiredTTLOnDequeue(TestCase):
+class TestFlowStoreExpiredTTLOnDequeue(TransactionTestCase):
 
     def setUp(self):
         self.q = Queue()
@@ -113,7 +113,7 @@ class TestFlowStoreExpiredTTLOnDequeue(TestCase):
             fs = FlowStore.objects.get(name='test')
 
 
-class TestFlowStoreFailed(TestCase):
+class TestFlowStoreFailed(TransactionTestCase):
 
     def setUp(self):
         self.q = Queue()

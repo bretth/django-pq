@@ -18,7 +18,7 @@ from .fixtures import (say_hello, Calculator,
 
 
 
-class TestQueueCreation(TransactionTestCase):
+class TestQueueCreation(TestCase):
 
     def test_default_queue_create(self):
         queue = Queue()

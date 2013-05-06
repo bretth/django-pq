@@ -217,7 +217,7 @@ class TestWorkerDeletesExpiredTTL(TransactionTestCase):
             rjob = Job.objects.get(id=self.job.id)
 
 
-class TestWorkerDequeueTimeout(TestCase):
+class TestWorkerDequeueTimeout(TransactionTestCase):
     """Simple test to ensure the worker finishes"""
 
     def setUp(self):
