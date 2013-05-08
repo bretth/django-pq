@@ -33,7 +33,7 @@ class QueuedJobAdmin(admin.ModelAdmin):
     list_display = ('__unicode__', 'queue', 'timeout', 'enqueued_at',
                     'scheduled_for', 'get_schedule_options',)
     list_filter = ('origin',)
-    ordering = ('id',)
+    ordering = ('id', 'scheduled_for')
 
     def __init__(self, *args, **kwargs):
         super(QueuedJobAdmin, self).__init__(*args, **kwargs)
