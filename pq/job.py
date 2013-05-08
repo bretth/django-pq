@@ -101,6 +101,16 @@ class Job(models.Model):
         job.clean()
         return job
 
+    def clean(self):
+        if isinstance(self.interval, int) and self.interval >= 0:
+                self.interval = relativedelta(seconds=self.interval)
+        elif self.scheduled_for and not (
+                isinstance(self.interval, timedelta) or
+                isinstance(self.interval, relativedelta)):
+            raise InvalidInterval(
+                "Interval must be a positive integer,"
+                " timedelta, or relativedelta instance")
+
     @classmethod
     def _get_job_or_promise(cls, conn, queue, timeout):
         """
@@ -159,32 +169,36 @@ class Job(models.Model):
 
     def get_schedule_options(self):
         """Humanized schedule options"""
-        s = ['repeat']
+        s = []
         if isinstance(self.repeat, integer_types) and self.repeat < 0:
-            s.append('forever')
-        elif isinstance(self.repeat, integer_types):
-            s.append('%i times' % self.repeat)
+            s.append('repeat forever')
+        elif isinstance(self.repeat, integer_types) and self.repeat > 0:
+            s.append('repeat %i times' % self.repeat)
         elif isinstance(self.repeat, datetime):
-            s.append('until %s,' % self.repeat.isoformat()[:16])
+            s.append('repeat until %s,' % self.repeat.isoformat()[:16])
 
-        if self.interval:
+        if self.interval and \
+            (isinstance(self.interval, relativedelta) or \
+            isinstance(self.interval, timedelta)) \
+            and self.interval.seconds > 0:
             s.append('every %s' % str(self.interval))
 
         if self.between:
             s.append('between %s' % self.between)
         if self.weekdays:
-            s.append('on')
+            s.append('on any')
             for day in self.weekdays:
                 if isinstance(day, weekday):
                     s.append('%s,' % str(day))
                 else:
                     s.append('%s,' % str(wdays[day]))
-        s = ' '.join(s)
-        if s[-1] == ',':
-            s = s[:-1]
-        first_letter = s[0].capitalize()
-        s = first_letter + s[1:]
-        return s
+        if s:
+            s = ' '.join(s)
+            if s[-1] == ',':
+                s = s[:-1]
+            first_letter = s[0].capitalize()
+            s = first_letter + s[1:]
+            return s
     get_schedule_options.short_description = 'schedule options'
 
 
@@ -208,22 +222,11 @@ class Job(models.Model):
         args = ', '.join(arg_list)
         return '%s(%s)' % (self.func_name, args)
 
-
     # Job execution
     def perform(self):  # noqa
         """Invokes the job function with the job arguments."""
         self.result = self.func(*self.args, **self.kwargs)
         return self.result
-
-    def clean(self):
-        if isinstance(self.interval, int) and self.interval >= 0:
-                self.interval = relativedelta(seconds=self.interval)
-        elif self.scheduled_for and not (
-                isinstance(self.interval, timedelta) or
-                isinstance(self.interval, relativedelta)):
-            raise InvalidInterval(
-                "Interval must be a positive integer,"
-                " timedelta, or relativedelta instance")
 
     def save(self, *args, **kwargs):
         kwargs.setdefault('using', self.connection)
