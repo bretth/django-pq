@@ -41,9 +41,9 @@ class Command(BaseCommand):
         for queue in args:
             q = Queue.objects.get(name=queue)
             if q.serial:
-                queues.append(SerialQueue.objects.get(name=queue))
+                queues.append(SerialQueue.create(name=queue))
             else:
-                queues.append(Queue.objects.get(name=queue))
+                queues.append(Queue.create(name=queue))
         w = Worker.create(queues, name=options.get('name'), connection=options['connection'])
 
         # Should we configure Sentry?
