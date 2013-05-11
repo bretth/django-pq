@@ -98,6 +98,7 @@ class Job(models.Model):
         job.status = status
         job.scheduled_for = scheduled_for
         job.interval = interval
+        job.between = between
         job.repeat = repeat
         job.weekdays = weekdays
         job.clean()
