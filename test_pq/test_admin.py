@@ -1,10 +1,12 @@
+from datetime import datetime
 from django.test import TestCase, TransactionTestCase
 from django.core.urlresolvers import reverse
 from django.contrib import admin
 from django.contrib.auth.models import User
 from nose2.tools import params
 
-from pq.job import Job, FailedJob, DequeuedJob, QueuedJob
+from pq.job import (Job, FailedJob, DequeuedJob,
+                     QueuedJob, ScheduledJob)
 from pq.worker import Worker
 from pq import Queue
 from pq.queue import FailedQueue
@@ -20,14 +22,17 @@ class TestJobAdmin(TransactionTestCase):
         self.q = Queue()
         self.q.enqueue_call(say_hello, args=('you',))
         self.q.enqueue_call(div_by_zero, args=(1,))
+        self.q.schedule(datetime(2099,1,1), say_hello, 'later')
         w = Worker.create(self.q)
         w.work(burst=True)
         self.q.enqueue_call(say_hello, args=('me',))
+        
 
     @params(
         ("failedjob", FailedJob),
         ("queuedjob", QueuedJob),
-        ("dequeuedjob", DequeuedJob))
+        ("dequeuedjob", DequeuedJob),
+        ("scheduledjob", ScheduledJob))
     def test_changelist(self, modelname, Model):
         url = reverse("admin:pq_%s_changelist" % modelname)
         response = self.client.get(url, follow = True)
