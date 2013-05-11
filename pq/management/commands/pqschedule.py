@@ -10,7 +10,7 @@ from pq.queue import PQ_DEFAULT_JOB_TIMEOUT
 
 
 class Command(BaseCommand):
-    help = """Schedule a function"""
+    help = "Schedule a function 'now' or at a future date."
     args = "<function now|ISO8601 arg arg ...>"
 
 
