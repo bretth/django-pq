@@ -1,14 +1,14 @@
 import logging
+import sys
 from django.core.management.base import BaseCommand
 from optparse import make_option
-
 
 logger = logging.getLogger(__name__)
 
 
 class Command(BaseCommand):
-    help = "Starts a pq worker"
-    args = "<queue queue ...>"
+    help = "Starts a pq worker on all available queues or just specified queues in order"
+    args = "[queue queue ...]"
 
 
     option_list = BaseCommand.option_list + (
@@ -38,6 +38,11 @@ class Command(BaseCommand):
 
         verbosity = int(options.get('verbosity'))
         queues = []
+        if not args:
+            args = [q[0] for q in Queue.objects.values_list('name')]
+        if not args:
+            print('There are no queues to work on')
+            sys.exit(1)
         for queue in args:
             q = Queue.objects.get(name=queue)
             if q.serial:
