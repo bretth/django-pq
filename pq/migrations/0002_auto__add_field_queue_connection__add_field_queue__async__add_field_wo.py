@@ -13,11 +13,6 @@ class Migration(SchemaMigration):
                       self.gf('django.db.models.fields.CharField')(default='default', max_length=100),
                       keep_default=False)
 
-        # Adding field 'Queue._async'
-        db.add_column(u'pq_queue', '_async',
-                      self.gf('django.db.models.fields.BooleanField')(default=True),
-                      keep_default=False)
-
         # Adding field 'Worker.stop'
         db.add_column(u'pq_worker', 'stop',
                       self.gf('django.db.models.fields.BooleanField')(default=False),
@@ -27,9 +22,6 @@ class Migration(SchemaMigration):
     def backwards(self, orm):
         # Deleting field 'Queue.connection'
         db.delete_column(u'pq_queue', 'connection')
-
-        # Deleting field 'Queue._async'
-        db.delete_column(u'pq_queue', '_async')
 
         # Deleting field 'Worker.stop'
         db.delete_column(u'pq_worker', 'stop')
@@ -79,7 +71,6 @@ class Migration(SchemaMigration):
         },
         u'pq.queue': {
             'Meta': {'object_name': 'Queue'},
-            '_async': ('django.db.models.fields.BooleanField', [], {'default': 'True'}),
             'cleaned': ('django.db.models.fields.DateTimeField', [], {'null': 'True', 'blank': 'True'}),
             'connection': ('django.db.models.fields.CharField', [], {'default': "'default'", 'max_length': '100'}),
             'default_timeout': ('django.db.models.fields.PositiveIntegerField', [], {'null': 'True', 'blank': 'True'}),

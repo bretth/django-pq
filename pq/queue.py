@@ -55,7 +55,7 @@ class Queue(models.Model):
         help_text="Optimisation: scheduled tasks are slower.")
     lock_expires = models.DateTimeField(default=now())
     serial = models.BooleanField(default=False)
-    _async = models.BooleanField(default=True)
+    _async = True
     _saved = False
 
     def __unicode__(self):
@@ -93,12 +93,11 @@ class Queue(models.Model):
         if not self._saved or scheduled:
             self.scheduled = scheduled
             q = self.validated_queue(self.name)
-            fields = ['default_timeout', 'connection', '_async', 'scheduled']
+            fields = ['default_timeout', 'connection', 'scheduled']
             dirty = [f for f in fields if q.__dict__[f] != self.__dict__[f]]
             if dirty:
                 q.default_timeout = self.default_timeout
                 q.connection = self.connection
-                q._async = self._async
                 q.serial = self.serial
                 # a queue remains a scheduled queue if prior scheduled jobs have been
                 # submitted to it
