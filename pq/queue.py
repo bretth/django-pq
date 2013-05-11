@@ -45,7 +45,7 @@ class _EnqueueArgs(object):
 
 class Queue(models.Model):
 
-    connection = None
+    connection = models.CharField(max_length=100, default='default')
     name = models.CharField(max_length=100, primary_key=True, default='default')
     default_timeout = models.PositiveIntegerField(null=True, blank=True)
     cleaned = models.DateTimeField(null=True, blank=True)
@@ -53,7 +53,8 @@ class Queue(models.Model):
         help_text="Optimisation: scheduled tasks are slower.")
     lock_expires = models.DateTimeField(default=now())
     serial = models.BooleanField(default=False)
-    _async = True
+    _async = models.BooleanField(default=True)
+    _saved = False
 
     def __unicode__(self):
         return self.name

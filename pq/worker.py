@@ -75,6 +75,7 @@ class Worker(models.Model):
     birth = models.DateTimeField(null=True, blank=True)
     expire = models.PositiveIntegerField(null=True, blank=True)
     queue_names = models.CharField(max_length=254, null=True, blank=True)
+    stop = models.BooleanField(default=False, help_text="Send a stop signal to the worker")
 
     def __unicode__(self):
         return self.name
