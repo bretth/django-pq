@@ -53,7 +53,7 @@ LOGGING = {
         },
     },
     'loggers': {
-        '': {
+        'pq': {
             'handlers': ['console'],
             'level': os.getenv('LOGGING_LEVEL', 'CRITICAL'),
             'propagate': True
