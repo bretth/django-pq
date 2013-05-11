@@ -4,6 +4,7 @@ from django.db.models import F
 from .job import FailedJob, QueuedJob, DequeuedJob
 from .queue import FailedQueue
 from .flow import FlowStore
+from .worker import Worker
 
 CONN = getattr(settings, 'PQ_ADMIN_CONNECTION', 'default')
 
@@ -77,8 +78,19 @@ class FlowAdmin(admin.ModelAdmin):
         self.list_display_links = (None, )
 
 
+class WorkerAdmin(admin.ModelAdmin):
+    list_display = ('name', 'birth', 'expire', 'queue_names', 'stop')
+    list_editable = ('stop', )
+    ordering = ('name',)
+
+    def __init__(self, *args, **kwargs):
+        super(WorkerAdmin, self).__init__(*args, **kwargs)
+        self.list_display_links = (None, )
+
+
 
 admin.site.register(FailedJob, FailedJobAdmin)
 admin.site.register(QueuedJob, QueuedJobAdmin)
 admin.site.register(DequeuedJob, DequeuedJobAdmin)
 admin.site.register(FlowStore, FlowAdmin)
+admin.site.register(Worker, WorkerAdmin)
