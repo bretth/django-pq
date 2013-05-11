@@ -313,6 +313,8 @@ class Queue(models.Model):
             for notify in conn.notifies:
                 if not notify.channel in queue_names:
                     continue
+                elif notify.payload == 'stop':
+                    raise DequeueTimeout(0)
                 conn.notifies.remove(notify)
                 logger.debug('Got job notification %s on queue %s'% (
                     notify.payload, notify.channel))

@@ -303,6 +303,7 @@ class Worker(models.Model):
                     if result is None:
                         break
                 except StopRequested:
+                    self.log.info('Stopping on request.')
                     break
 
                 self.state = 'busy'
@@ -323,7 +324,9 @@ class Worker(models.Model):
     @property
     def _dequeue_loop(self):
         """Helper function to control the loop in tests"""
-        if self._expires_after == None:
+        if Worker.objects.filter(name=self.name, stop=True):
+            raise StopRequested
+        elif self._expires_after == None:
             return True
         elif self._expires_after < 0:
             raise StopRequested
@@ -492,3 +495,9 @@ class Worker(models.Model):
     def pop_exc_handler(self):
         """Pops the latest exception handler off of the exc handler stack."""
         return self._exc_handlers.pop()
+
+    def save(self, *args, **kwargs):
+        if self.stop:
+            for q in self.queue_names.split(','):
+                PQ.objects.get(name=q).notify('stop')
+        super(Worker, self).save(*args, **kwargs)
