@@ -7,19 +7,21 @@ from pq.queue import PQ_DEFAULT_JOB_TIMEOUT
 
 
 class Command(BaseCommand):
-    help = "Enqueue a function with or without arguments"
+    help = "Enqueue a function"
     args = "<function arg arg ...>"
 
 
     option_list = BaseCommand.option_list + (
         make_option('--queue', '-q', dest='queue', default='',
             help='Specify the queue [default]'),
+        make_option('--conn', '-c', dest='conn', default='default',
+            help='Specify a connection [default]'),
         make_option('--timeout', '-t', type="int", dest='timeout',
             help="A timeout in seconds"),
         make_option('--serial', action="store_true", default=False, dest='serial',
             help="A timeout in seconds"),
         make_option('--sync', action="store_true", default=False, dest='sync',
-            help_text="Perform the task now")
+            help="Perform the task now")
     )
 
     def handle(self, *args, **options):
@@ -28,19 +30,24 @@ class Command(BaseCommand):
         this method.
         """
         from pq.queue import Queue, SerialQueue
-
+        verbosity = int(options.get('verbosity', 1))
         func = args[0]
         args = args[1:]
         async = not options.get('sync')
         timeout = options.get('timeout')
         queue = options.get('queue')
+        conn = options.get('conn')
         if options['serial']:
             queue = queue or 'serial'
-            q = SerialQueue.create(queue)
+            q = SerialQueue.create(queue, connection=conn)
         else:
             queue = queue or 'default'
-            q = Queue.create(queue)
+            q = Queue.create(queue, connection=conn)
         if timeout:
-            q.enqueue(func, *args, timeout=timeout, async=async)
+            job = q.enqueue_call(func, args=args, timeout=timeout, async=async)
         else:
-            q.enqueue(func, *args, async=async)
+            job = q.enqueue_call(func, args=args, async=async)
+        if verbosity and job.id:
+            print('Job %i created' % job.id)
+        elif verbosity:
+            print('Job complete')
