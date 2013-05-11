@@ -148,7 +148,8 @@ class Queue(models.Model):
         timeout = job.timeout
         scheduled_for = job.scheduled_for + job.interval
         scheduled_for = get_restricted_datetime(scheduled_for, job.between, job.weekdays)
-        if not self.scheduled and (scheduled_for > job.scheduled_for):
+        status = Job.SCHEDULED if scheduled_for > job.scheduled_for else Job.QUEUED
+        if not self.scheduled and status == Job.SCHEDULED:
             self.save_queue(scheduled=True)
         else:
             self.save_queue()
@@ -159,7 +160,7 @@ class Queue(models.Model):
                          interval=job.interval,
                          between=job.between,
                          weekdays=job.weekdays,
-                         status=Job.QUEUED)
+                         status=status)
         return self.enqueue_job(job, timeout=timeout)
 
 
@@ -175,6 +176,7 @@ class Queue(models.Model):
         """
         at = get_restricted_datetime(at, between, weekdays)
         # Scheduled tasks require a slower query
+        status = Job.SCHEDULED if at else Job.QUEUED
         if at and not self.scheduled:
             self.save_queue(scheduled=True)
         else:
@@ -188,7 +190,7 @@ class Queue(models.Model):
                          interval=interval,
                          between=between,
                          weekdays=weekdays,
-                         status=Job.QUEUED)
+                         status=status)
         return self.enqueue_job(job, timeout=timeout, async=async)
 
     def enqueue(self, f, *args, **kwargs):
@@ -243,7 +245,7 @@ class Queue(models.Model):
 
         else:
             job.perform()
-            job.save()
+            job.status = Job.FINISHED
         return job
 
     def schedule(self, at, f, *args, **kwargs):
