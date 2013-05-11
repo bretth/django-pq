@@ -18,6 +18,8 @@ class Command(BaseCommand):
             help="A timeout in seconds"),
         make_option('--serial', action="store_true", default=False, dest='serial',
             help="A timeout in seconds"),
+        make_option('--sync', action="store_true", default=False, dest='sync',
+            help_text="Perform the task now")
     )
 
     def handle(self, *args, **options):
@@ -29,6 +31,7 @@ class Command(BaseCommand):
 
         func = args[0]
         args = args[1:]
+        async = not options.get('sync')
         timeout = options.get('timeout')
         queue = options.get('queue')
         if options['serial']:
@@ -38,6 +41,6 @@ class Command(BaseCommand):
             queue = queue or 'default'
             q = Queue.create(queue)
         if timeout:
-            q.enqueue(func, *args, timeout=timeout)
+            q.enqueue(func, *args, timeout=timeout, async=async)
         else:
-            q.enqueue(func, *args)
+            q.enqueue(func, *args, async=async)

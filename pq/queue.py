@@ -31,6 +31,7 @@ class _EnqueueArgs(object):
     def __init__(self, *args, **kwargs):
         self.timeout = None
         self.result_ttl = None
+        self.async = True
         self.args = args
         self.kwargs = kwargs
         # Detect explicit invocations, i.e. of the form:
@@ -39,6 +40,7 @@ class _EnqueueArgs(object):
             assert args == (), 'Extra positional arguments cannot be used when using explicit args and kwargs.'  # noqa
             self.result_ttl = kwargs.pop('result_ttl', None)
             self.timeout = kwargs.pop('timeout', None)
+            self.async = kwargs.pop('async', True)
             self.args = kwargs.pop('args', None)
             self.kwargs = kwargs.pop('kwargs', None)
 
@@ -163,7 +165,7 @@ class Queue(models.Model):
 
 
     def enqueue_call(self, func, args=None, kwargs=None,
-        timeout=None, result_ttl=None, at=None,
+        timeout=None, result_ttl=None, async=True, at=None,
         repeat=None, interval=0, between='', weekdays=None): #noqa
         """Creates a job to represent the delayed function call and enqueues
         it.
@@ -188,7 +190,7 @@ class Queue(models.Model):
                          between=between,
                          weekdays=weekdays,
                          status=Job.QUEUED)
-        return self.enqueue_job(job, timeout=timeout)
+        return self.enqueue_job(job, timeout=timeout, async=async)
 
     def enqueue(self, f, *args, **kwargs):
         """Creates a job to represent the delayed function call and enqueues
@@ -211,9 +213,11 @@ class Queue(models.Model):
         enq = _EnqueueArgs(*args, **kwargs)
 
         return self.enqueue_call(func=f, args=enq.args, kwargs=enq.kwargs,
-                                 timeout=enq.timeout, result_ttl=enq.result_ttl)
+                                 timeout=enq.timeout, 
+                                 result_ttl=enq.result_ttl,
+                                 async=enq.async)
 
-    def enqueue_job(self, job, timeout=None, set_meta_data=True):
+    def enqueue_job(self, job, timeout=None, set_meta_data=True, async=True):
         """Enqueues a job for delayed execution.
 
         When the `timeout` argument is sent, it will overrides the default
@@ -233,7 +237,7 @@ class Queue(models.Model):
         else:
             job.timeout = PQ_DEFAULT_JOB_TIMEOUT  # default
 
-        if self._async:
+        if self._async and async:
             job.queue_id = self.name
             job.save()
             self.notify(job.id)
@@ -254,6 +258,7 @@ class Queue(models.Model):
 
         return self.enqueue_call(func=f, args=enq.args, kwargs=enq.kwargs,
                                  timeout=enq.timeout, result_ttl=enq.result_ttl,
+                                 async=enq.async,
                                  at=at)
 
 

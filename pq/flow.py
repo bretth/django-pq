@@ -16,7 +16,7 @@ class FlowQueue(Queue):
     class Meta:
         proxy = True
 
-    def enqueue_job(self, job, timeout=None, set_meta_data=True):
+    def enqueue_job(self, job, timeout=None, set_meta_data=True, async=True):
         """Enqueues a job for delayed execution.
 
         When the `timeout` argument is sent, it will overrides the default

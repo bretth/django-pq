@@ -235,6 +235,24 @@ class TestAsyncFalse(TransactionTestCase):
      self.assertEqual(job.result, 6)
 
 
+class TestEnqueueAsyncFalse(TestCase):
+    def setUp(self):
+        self.q = Queue()
+
+    def test_enqueue_async_false(self):
+        job = self.q.enqueue(some_calculation, args=(2, 3), async=False)
+        self.assertEqual(job.result, 6)
+
+    def test_enqueue_call_async_false(self):
+        job = self.q.enqueue_call(some_calculation, args=(2, 3), async=False)
+        self.assertEqual(job.result, 6)
+
+    def test_schedule_call_async_false(self):
+        job = self.q.enqueue_call(some_calculation, args=(2, 3), async=False)
+        self.assertEqual(job.result, 6)
+
+
+
 class TestDeleteExpiredTTL(TransactionTestCase):
     def setUp(self):
         q = Queue()
