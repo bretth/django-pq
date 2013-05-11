@@ -9,6 +9,7 @@ class TestPQWorker(TransactionTestCase):
     reset_sequences = True
     def setUp(self):
         self.q = Queue()
+        self.q.save_queue()
 
     def test_pq_worker(self):
         call_command('pqworker', 'default', burst=True)
@@ -18,7 +19,9 @@ class TestPQWorkerSerial(TransactionTestCase):
     reset_sequences = True
     def setUp(self):
         self.q = Queue()
+        self.q.save_queue()
         self.sq = SerialQueue()
+        self.sq.save_queue()
 
     def test_pq_worker_serial(self):
         call_command('pqworker', 'serial', 'default', burst=True)

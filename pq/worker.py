@@ -276,8 +276,10 @@ class Worker(models.Model):
 
         The return value indicates whether any jobs were processed.
         """
+        # delayed saving of queues
+        for q in self.queues:
+            q.save_queue()
         self._install_signal_handlers()
-
         did_perform_work = False
         self.register_birth()
         self.log.info('PQ worker started, version %s' % VERSION)

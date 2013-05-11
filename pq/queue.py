@@ -64,10 +64,8 @@ class Queue(models.Model):
                name='default', default_timeout=None,
                connection='default', async=True):
         """Returns a Queue ready for accepting jobs"""
-        queue = cls.validated_queue(cls.validated_name(name))
-        if default_timeout != queue.default_timeout:
-            queue.default_timeout = default_timeout
-            queue.save()
+        queue = cls(name=cls.validated_name(name))
+        queue.default_timeout = default_timeout
         queue.connection = connection
         queue._async = async
         return queue
@@ -84,18 +82,27 @@ class Queue(models.Model):
 
     @classmethod
     def validated_queue(cls, name):
-        try:
-            q, created = cls.objects.get_or_create(name=name)
-        except DatabaseError as inst:
-            logger.info('DatabaseError. PQ tables have not been created yet')
-            # handle when the tables haven't been created
-            if 'relation' in str(inst) and 'does not exist' in str(inst):
-                q = cls(name=cls.validated_name(name))
-            else:
-                raise
-        if q.serial:
+        q, created = cls.objects.get_or_create(name=name)
+        if not created and q.serial:
             raise InvalidQueueName("%s is a serial queue" % name)
         return q
+
+    def save_queue(self, scheduled=False):
+        if not self._saved or scheduled:
+            self.scheduled = scheduled
+            q = self.validated_queue(self.name)
+            fields = ['default_timeout', 'connection', '_async', 'scheduled']
+            dirty = [f for f in fields if q.__dict__[f] != self.__dict__[f]]
+            if dirty:
+                q.default_timeout = self.default_timeout
+                q.connection = self.connection
+                q._async = self._async
+                q.serial = self.serial
+                # a queue remains a scheduled queue if prior scheduled jobs have been
+                # submitted to it
+                q.scheduled = True if scheduled else q.scheduled
+                q.save()
+                self._saved = True
 
     @classmethod
     def all(cls, connection='default'):
@@ -140,10 +147,10 @@ class Queue(models.Model):
         timeout = job.timeout
         scheduled_for = job.scheduled_for + job.interval
         scheduled_for = get_restricted_datetime(scheduled_for, job.between, job.weekdays)
-        # handle trivial repeats where we don't need the scheduler
         if not self.scheduled and (scheduled_for > job.scheduled_for):
-            self.scheduled = True
-            self.save()
+            self.save_queue(scheduled=True)
+        else:
+            self.save_queue()
         job = Job.create(job.func, job.args, job.kwargs, connection=job.connection,
                          result_ttl=job.result_ttl,
                          scheduled_for=scheduled_for,
@@ -165,13 +172,14 @@ class Queue(models.Model):
         and kwargs as explicit arguments.  Any kwargs passed to this function
         contain options for PQ itself.
         """
-        timeout = timeout or self.default_timeout
-
         at = get_restricted_datetime(at, between, weekdays)
         # Scheduled tasks require a slower query
         if at and not self.scheduled:
-            self.scheduled = True
-            self.save()
+            self.save_queue(scheduled=True)
+        else:
+            self.save_queue()
+        timeout = timeout or self.default_timeout
+
         job = Job.create(func, args, kwargs, connection=self.connection,
                          result_ttl=result_ttl,
                          scheduled_for=at,

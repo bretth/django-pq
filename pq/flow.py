@@ -108,6 +108,9 @@ class FlowStore(models.Model):
             FlowStore.objects.using(connection).filter(
                status=FlowStore.FINISHED, expired_at__lte=now()).delete()
 
+    def save(self, *args, **kwargs):
+        self.queue.save_queue()
+        super(FlowStore, self).save(*args, **kwargs)
 
 class Flow(object):
 
