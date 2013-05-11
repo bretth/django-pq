@@ -29,6 +29,9 @@ class FailedJobAdmin(admin.ModelAdmin):
         return self.model.objects.using(
             CONN).filter(queue__name='failed')
 
+    def has_add_permission(self, request):
+        return False
+
 
 class QueuedJobAdmin(admin.ModelAdmin):
     list_display = ('__unicode__', 'queue', 'timeout', 'enqueued_at',
@@ -44,6 +47,10 @@ class QueuedJobAdmin(admin.ModelAdmin):
     def queryset(self, request):
         return self.model.objects.using(
             CONN).all().exclude(queue__name='failed').exclude(queue=None)
+
+    def has_add_permission(self, request):
+        return False
+
 
 class ScheduledJobAdmin(admin.ModelAdmin):
     list_display = ('__unicode__', 'queue', 'timeout', 'enqueued_at',
@@ -83,6 +90,9 @@ class DequeuedJobAdmin(admin.ModelAdmin):
     def queryset(self, request):
         return self.model.objects.using(CONN).filter(queue=None)
 
+    def has_add_permission(self, request):
+        return False
+
 
 class FlowAdmin(admin.ModelAdmin):
     list_display = ('id', 'name', 'queue', 'enqueued_at', 'ended_at', 'status' )
@@ -92,6 +102,9 @@ class FlowAdmin(admin.ModelAdmin):
     def __init__(self, *args, **kwargs):
         super(FlowAdmin, self).__init__(*args, **kwargs)
         self.list_display_links = (None, )
+
+    def has_add_permission(self, request):
+        return False
 
 
 class WorkerAdmin(admin.ModelAdmin):
@@ -103,6 +116,9 @@ class WorkerAdmin(admin.ModelAdmin):
         super(WorkerAdmin, self).__init__(*args, **kwargs)
         self.list_display_links = (None, )
 
+    def has_add_permission(self, request):
+        return False
+
 
 
 admin.site.register(FailedJob, FailedJobAdmin)
@@ -111,3 +127,4 @@ admin.site.register(ScheduledJob, ScheduledJobAdmin)
 admin.site.register(DequeuedJob, DequeuedJobAdmin)
 admin.site.register(FlowStore, FlowAdmin)
 admin.site.register(Worker, WorkerAdmin)
+
