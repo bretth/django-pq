@@ -1,6 +1,7 @@
 from django.core.management.base import BaseCommand
 from optparse import make_option
 
+from six import integer_types
 from dateutil import parser
 from django.conf import settings
 from django.utils.timezone import now, get_default_timezone
@@ -9,13 +10,15 @@ from pq.queue import PQ_DEFAULT_JOB_TIMEOUT
 
 
 class Command(BaseCommand):
-    help = """Schedule a function with or without arguments"""
+    help = """Schedule a function"""
     args = "<function now|ISO8601 arg arg ...>"
 
 
     option_list = BaseCommand.option_list + (
         make_option('--queue', '-q', dest='queue', default='',
             help='Specify the queue [default]'),
+        make_option('--conn', '-c', dest='conn', default='default',
+            help='Specify a connection [default]'),
         make_option('--timeout', '-t', type="int", dest='timeout',
             help="A timeout in seconds"),
         make_option('--serial', action="store_true", default=False, dest='serial',
@@ -50,7 +53,7 @@ class Command(BaseCommand):
         this method.
         """
         from pq.queue import Queue, SerialQueue
-
+        verbosity = int(options.get('verbosity', 1))
         func = args[1]
         if args[0].lower() == 'now':
             at = now()
@@ -72,19 +75,24 @@ class Command(BaseCommand):
                 options.get('sa'),
                 options.get('su'),
                 )
-            weekdays = [w for w in weekdays if w]
+
+            weekdays = [w for w in weekdays if isinstance(w, integer_types)]
         timeout = options.get('timeout')
         queue = options.get('queue')
+        conn = options.get('conn')
         if options['serial']:
             queue = queue or 'serial'
-            q = SerialQueue.create(queue)
+            q = SerialQueue.create(queue, connection=conn)
         else:
             queue = queue or 'default'
-            q = Queue.create(queue)
-        q.schedule_call(at, func, args=args, 
+            q = Queue.create(queue, connection=conn)
+        job = q.schedule_call(at, func, args=args, 
             timeout=timeout,
             repeat=options['repeat'],
             interval=options['interval'],
             between=options['between'],
             weekdays=weekdays
             )
+        if verbosity:
+            print('Job %i created' % job.id)
+
