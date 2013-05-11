@@ -15,6 +15,7 @@ from .exceptions import InvalidInterval
 
 class Job(models.Model):
 
+    SCHEDULED = 0
     QUEUED = 1
     FINISHED = 2
     FAILED = 3
@@ -22,6 +23,7 @@ class Job(models.Model):
     FLOW = 5
 
     STATUS_CHOICES = (
+        (SCHEDULED, 'scheduled'),
         (QUEUED, 'queued'),
         (FINISHED, 'finished'),
         (FAILED, 'failed'),
@@ -243,6 +245,11 @@ class FailedJob(Job):
 
 
 class QueuedJob(Job):
+    class Meta:
+        proxy = True
+
+
+class ScheduledJob(Job):
     class Meta:
         proxy = True
 
