@@ -54,7 +54,7 @@ requeue_jobs.short_description = "Requeue selected jobs"
 
 
 class DequeuedJobAdmin(admin.ModelAdmin):
-    list_display = ('__unicode__', 'origin', 'status', 'ended_at')
+    list_display = ('__unicode__', 'origin', 'status', 'enqueued_at', 'ended_at')
     list_filter = ('origin', 'status')
     ordering = ('id',)
     actions = [requeue_jobs]
