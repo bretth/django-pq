@@ -218,6 +218,8 @@ class Worker(models.Model):
 
     @property
     def stopped(self):
+        if not self._stopped and Worker.objects.filter(name=self.name, stop=True):
+            self._stopped = True
         return self._stopped
 
     def _install_signal_handlers(self):
