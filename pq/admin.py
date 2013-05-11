@@ -107,6 +107,7 @@ class WorkerAdmin(admin.ModelAdmin):
 
 admin.site.register(FailedJob, FailedJobAdmin)
 admin.site.register(QueuedJob, QueuedJobAdmin)
+admin.site.register(ScheduledJob, ScheduledJobAdmin)
 admin.site.register(DequeuedJob, DequeuedJobAdmin)
 admin.site.register(FlowStore, FlowAdmin)
 admin.site.register(Worker, WorkerAdmin)
