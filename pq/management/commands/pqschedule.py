@@ -22,7 +22,7 @@ class Command(BaseCommand):
         make_option('--timeout', '-t', type="int", dest='timeout',
             help="A timeout in seconds"),
         make_option('--serial', action="store_true", default=False, dest='serial',
-            help="A timeout in seconds"),
+            help="Serial queue"),
         make_option('--repeat', '-r', type="int", dest='repeat', default=0,
             help="Repeat number of times or -1 for indefinitely"),
         make_option('--interval', '-i', type="int", dest='interval', default=0,
