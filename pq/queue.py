@@ -55,6 +55,7 @@ class Queue(models.Model):
         help_text="Optimisation: scheduled tasks are slower.")
     lock_expires = models.DateTimeField(default=now())
     serial = models.BooleanField(default=False)
+    idempotent = models.BooleanField(default=False)
     _async = True
     _saved = False
 
@@ -64,11 +65,12 @@ class Queue(models.Model):
     @classmethod
     def create(cls,
                name='default', default_timeout=None,
-               connection='default', async=True):
+               connection='default', async=True, idempotent=False):
         """Returns a Queue ready for accepting jobs"""
         queue = cls(name=cls.validated_name(name))
         queue.default_timeout = default_timeout
         queue.connection = connection
+        queue.idempotent = idempotent
         queue._async = async
         return queue
 
@@ -93,12 +95,13 @@ class Queue(models.Model):
         if not self._saved or scheduled:
             self.scheduled = scheduled
             q = self.validated_queue(self.name)
-            fields = ['default_timeout', 'connection', 'scheduled']
+            fields = ['default_timeout', 'connection', 'scheduled', 'idempotent']
             dirty = [f for f in fields if q.__dict__[f] != self.__dict__[f]]
             if dirty:
                 q.default_timeout = self.default_timeout
                 q.connection = self.connection
                 q.serial = self.serial
+                q.idempotent = self.idempotent
                 # a queue remains a scheduled queue if prior scheduled jobs have been
                 # submitted to it
                 q.scheduled = True if scheduled else q.scheduled

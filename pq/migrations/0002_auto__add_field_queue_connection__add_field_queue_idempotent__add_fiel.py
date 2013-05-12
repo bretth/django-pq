@@ -13,6 +13,11 @@ class Migration(SchemaMigration):
                       self.gf('django.db.models.fields.CharField')(default='default', max_length=100),
                       keep_default=False)
 
+        # Adding field 'Queue.idempotent'
+        db.add_column(u'pq_queue', 'idempotent',
+                      self.gf('django.db.models.fields.BooleanField')(default=False),
+                      keep_default=False)
+
         # Adding field 'Worker.stop'
         db.add_column(u'pq_worker', 'stop',
                       self.gf('django.db.models.fields.BooleanField')(default=False),
@@ -22,6 +27,9 @@ class Migration(SchemaMigration):
     def backwards(self, orm):
         # Deleting field 'Queue.connection'
         db.delete_column(u'pq_queue', 'connection')
+
+        # Deleting field 'Queue.idempotent'
+        db.delete_column(u'pq_queue', 'idempotent')
 
         # Deleting field 'Worker.stop'
         db.delete_column(u'pq_worker', 'stop')
@@ -74,7 +82,8 @@ class Migration(SchemaMigration):
             'cleaned': ('django.db.models.fields.DateTimeField', [], {'null': 'True', 'blank': 'True'}),
             'connection': ('django.db.models.fields.CharField', [], {'default': "'default'", 'max_length': '100'}),
             'default_timeout': ('django.db.models.fields.PositiveIntegerField', [], {'null': 'True', 'blank': 'True'}),
-            'lock_expires': ('django.db.models.fields.DateTimeField', [], {'default': 'datetime.datetime(2013, 5, 10, 0, 0)'}),
+            'idempotent': ('django.db.models.fields.BooleanField', [], {'default': 'False'}),
+            'lock_expires': ('django.db.models.fields.DateTimeField', [], {'default': 'datetime.datetime(2013, 5, 12, 0, 0)'}),
             'name': ('django.db.models.fields.CharField', [], {'default': "'default'", 'max_length': '100', 'primary_key': 'True'}),
             'scheduled': ('django.db.models.fields.BooleanField', [], {'default': 'False'}),
             'serial': ('django.db.models.fields.BooleanField', [], {'default': 'False'})
