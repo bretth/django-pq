@@ -216,6 +216,19 @@ Tasks can be scheduled at specific times, repeated at intervals, repeated until 
 
     q.schedule_call(dt, say_hello, args=('groundhog day',), repeat=until, interval=monthly)
 
+From the commandline:
+
+.. code-block:: bash
+
+    # schedule now, repeat daily on Mondays and Tuesdays 
+    $ ./manage.py pqschedule now package.module.func \
+    --repeat=-1 --interval=86400 --mo --tu
+
+    # schedule a one of task for the first day of 2020
+    $ ./manage.py pqschedule 2020-01-01 package.module.func
+    # at a specific time (any ISO8601 date/datetime)
+    $ ./manage.py pqschedule 2020-01-01T9:10 package.module.func arg1 arg2 
+
 
 Scheduling is a proposed feature of RQ so the api may change.
 
@@ -279,7 +292,9 @@ Completed jobs hang around for a minimum TTL (time to live) of 500 seconds. Sinc
 Workers
 --------
 
-Work is done through pqworker, a django management command. To accept work on the fictional ``high``, ``default``, and ``low`` queues:
+Work is done through pqworker, a django management command. To accept work on all queues, ``$ python manage.py pqworker``. 
+
+To accept work on the fictional ``high``, ``default``, and ``low`` queues:
 
 .. code-block:: bash
 
@@ -289,7 +304,7 @@ Work is done through pqworker, a django management command. To accept work on th
     Job ended normally without result
     *** Listening for work on high, default, low
 
-If you don’t see any output you might need to configure your django project LOGGING. Here’s an example configuration that will print to the console
+If you don’t see any output you might need to configure your django project ``LOGGING``. Here’s an example configuration that will print to the console:
 
 .. code-block:: python
 
@@ -353,13 +368,15 @@ Troubleshooting Workers
  
 The django-pq worker depends on postgresql messaging (LISTEN and NOTIFY) to avoid polling the database. This functionality may not be available on all postgresql installations, and connection pooling may also prevent messaging from working correctly. In the event jobs are not being received instantly you can set ``PQ_DEFAULT_WORKER_TTL = 60`` to poll the database for jobs every 60 seconds. To test if your jobs will go through instantly run ``python manage.py pqworker default`` (a worker on the 'default' queue) in one terminal and a test job in another terminal, ``python manage.py pqenqueue pq.utils.test_job``.
 
+Depending on your hosting environment down-scaling, terminating, or deploying environments with dependent worker processes may not give your workers enough time to complete their task. You can gracefully terminate all workers with a blocking command, ``./manage.py pqworker --terminate``, or use the admin to stop individual workers. In the event the worker is terminated before the job is complete, the job will remain in the dequeued admin list with a 'started' status. 
+
 
 Monitoring & Admin
 ----------------------
 
-Jobs are monitored or administered as necessary through the django admin. Four admin changelist views show flows, queued jobs, failed jobs, and jobs that have been popped from the queue (in progress, finished or orphaned). Admin actions allow jobs to be requeued or deleted.
+Jobs are monitored or administered as necessary through the django admin. Admin actions allow jobs to be requeued or deleted.
 
-In the event the worker is terminated before the job is complete, the job will remain in the dequeued admin list with a 'started' status.  
+Workers can be stopped within 1 job cycle in the admin by setting the Worker stop. 
 
 Connections
 ------------
