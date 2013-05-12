@@ -1,4 +1,5 @@
 import logging
+import time
 import sys
 from django.core.management.base import BaseCommand
 from optparse import make_option
@@ -20,6 +21,8 @@ class Command(BaseCommand):
                     help='Report exceptions to this Sentry DSN'),
         make_option('--sentry-dsn', action='store', default=None, metavar='URL',
                     help='Report exceptions to this Sentry DSN'),
+        make_option('--terminate', action='store_true', dest='terminate',
+                    help='Terminate worker'),
     )
 
     def handle(self, *args, **options):
@@ -38,8 +41,21 @@ class Command(BaseCommand):
 
         verbosity = int(options.get('verbosity'))
         queues = []
+        if options.get('terminate'):
+            workern = [w.name for w in Worker.objects.all()]
+
+            for worker in Worker.objects.all()[:]:
+                worker.stop = True
+                worker.save()
+
+            print('Terminating %s ...' % ' '.join(workern))  
+            while Worker.objects.all():
+                time.sleep(5)
+            
+            return
         if not args:
-            args = [q[0] for q in Queue.objects.values_list('name')]
+            args = [q[0] for q in Queue.objects.values_list('name').exclude(name='failed')]
+            args.sort()
         if not args:
             print('There are no queues to work on')
             sys.exit(1)
