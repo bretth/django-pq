@@ -93,7 +93,7 @@ class Job(models.Model):
             job.func_name = func
         job.args = args
         job.kwargs = kwargs
-        job.description = job.get_call_string()
+        job.description = job.get_call_string()[:254]
         job.result_ttl = result_ttl
         job.status = status
         job.scheduled_for = scheduled_for
