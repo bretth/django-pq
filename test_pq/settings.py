@@ -11,6 +11,7 @@ USE_TZ = True
 STATIC_URL = '/static/'
 MEDIA_URL = '/media/'
 SOUTH_TESTS_MIGRATE = False
+PQ_QUEUE_CACHE = False # switch off for tests
 
 DATABASES = {
     'default': {
