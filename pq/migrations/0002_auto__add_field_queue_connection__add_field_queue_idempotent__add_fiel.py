@@ -8,11 +8,6 @@ from django.db import models
 class Migration(SchemaMigration):
 
     def forwards(self, orm):
-        # Adding field 'Queue.connection'
-        db.add_column(u'pq_queue', 'connection',
-                      self.gf('django.db.models.fields.CharField')(default='default', max_length=100),
-                      keep_default=False)
-
         # Adding field 'Queue.idempotent'
         db.add_column(u'pq_queue', 'idempotent',
                       self.gf('django.db.models.fields.BooleanField')(default=False),
@@ -25,9 +20,6 @@ class Migration(SchemaMigration):
 
 
     def backwards(self, orm):
-        # Deleting field 'Queue.connection'
-        db.delete_column(u'pq_queue', 'connection')
-
         # Deleting field 'Queue.idempotent'
         db.delete_column(u'pq_queue', 'idempotent')
 
@@ -80,7 +72,6 @@ class Migration(SchemaMigration):
         u'pq.queue': {
             'Meta': {'object_name': 'Queue'},
             'cleaned': ('django.db.models.fields.DateTimeField', [], {'null': 'True', 'blank': 'True'}),
-            'connection': ('django.db.models.fields.CharField', [], {'default': "'default'", 'max_length': '100'}),
             'default_timeout': ('django.db.models.fields.PositiveIntegerField', [], {'null': 'True', 'blank': 'True'}),
             'idempotent': ('django.db.models.fields.BooleanField', [], {'default': 'False'}),
             'lock_expires': ('django.db.models.fields.DateTimeField', [], {'default': 'datetime.datetime(2013, 5, 12, 0, 0)'}),
