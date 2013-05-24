@@ -344,7 +344,7 @@ class TestListenForJobsSelect(TransactionTestCase):
 class TestScheduleJobs(TransactionTestCase):
 
     def setUp(self):
-        self.q = Queue()
+        self.q = Queue(scheduled=True)
         self.w = Worker.create([self.q])
 
     def test_shedule_call(self):

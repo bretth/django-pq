@@ -175,7 +175,7 @@ Tasks can be scheduled at specific times, repeated at intervals, repeated until 
 
     # you should use timezone aware dates if you have USE_TZ=True
     future = datetime(2014,1,1, tzinfo=utc)
-    q = Queue()
+    q = Queue(scheduled=True)
 
     # The simple enqueue like call
     q.schedule(future, say_hello, 'you')

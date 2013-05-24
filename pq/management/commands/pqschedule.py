@@ -82,10 +82,10 @@ class Command(BaseCommand):
         conn = options.get('conn')
         if options['serial']:
             queue = queue or 'serial'
-            q = SerialQueue.create(queue, connection=conn)
+            q = SerialQueue.create(queue, connection=conn, scheduled=True)
         else:
             queue = queue or 'default'
-            q = Queue.create(queue, connection=conn)
+            q = Queue.create(queue, connection=conn, scheduled=True)
         job = q.schedule_call(at, func, args=args, 
             timeout=timeout,
             repeat=options['repeat'],

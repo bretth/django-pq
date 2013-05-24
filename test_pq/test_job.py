@@ -82,7 +82,7 @@ class Test_get_job_or_promise(TransactionTestCase):
     """Test the Job._get_job_or_promise classmethod"""
 
     def setUp(self):
-        self.q = Queue()
+        self.q = Queue(scheduled=True)
         # simulate the default worker timeout
         self.timeout = 60
         future = now() + timedelta(seconds=self.timeout/2)
@@ -128,7 +128,7 @@ class Test_get_job_no_promise(TransactionTestCase):
     def setUp(self):
         # setup a job in the very near future which
         # should execute
-        self.q = Queue()
+        self.q = Queue(scheduled=True)
         # simulate the default worker timeout
         self.timeout = 60
         future = now() + timedelta(seconds=1)
