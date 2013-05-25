@@ -108,7 +108,7 @@ class FlowAdmin(admin.ModelAdmin):
 
 
 class WorkerAdmin(admin.ModelAdmin):
-    list_display = ('name', 'birth', 'expire', 'queue_names', 'stop')
+    list_display = ('name', 'birth', 'expire', 'heartbeat', 'queue_names', 'stop')
     list_editable = ('stop', )
     ordering = ('name',)
 
