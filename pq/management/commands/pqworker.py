@@ -60,7 +60,11 @@ class Command(BaseCommand):
             print('There are no queues to work on')
             sys.exit(1)
         for queue in args:
-            q = Queue.objects.get(name=queue)
+            try:
+                q = Queue.objects.get(name=queue)
+            except Queue.DoesNotExist:
+                print("The '%s' queue does not exist. Use the pqcreate command to create it." % queue)
+                continue
             if q.serial:
                 q = SerialQueue.objects.get(name=queue)
             else:
@@ -68,15 +72,15 @@ class Command(BaseCommand):
             q.connection = options['connection']
             q._saved = True
             queues.append(q)
-                
-        w = Worker.create(queues, name=options.get('name'), connection=options['connection'])
+        if queues:
+            w = Worker.create(queues, name=options.get('name'), connection=options['connection'])
 
-        # Should we configure Sentry?
-        if sentry_dsn:
-            from raven import Client
-            from pq.contrib.sentry import register_sentry
-            client = Client(sentry_dsn)
-            register_sentry(client, w)
+            # Should we configure Sentry?
+            if sentry_dsn:
+                from raven import Client
+                from pq.contrib.sentry import register_sentry
+                client = Client(sentry_dsn)
+                register_sentry(client, w)
 
-        w.work(burst=options['burst'])
+            w.work(burst=options['burst'])
 
