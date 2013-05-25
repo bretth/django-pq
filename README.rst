@@ -158,9 +158,9 @@ A serial queue exists which soft locks the queue for the task being performed. A
 
     from pq import SerialQueue
 
-    sq = SerialQueue('serial')
+    sq = SerialQueue()
 
-Serial queues are not in RQ.
+A default serial queue is created called 'serial'. Serial queues are not in RQ.
 
 Scheduling
 -----------
@@ -271,7 +271,7 @@ Workflows are not part of RQ.
 Results
 ---------
 
-By default, jobs should execute within 180 seconds. You can alter the default time in your django ``PQ_DEFAULT_JOB_TIMEOUT`` setting. After that, the worker kills the work horse and puts the job onto the failed queue, indicating the job timed out.
+By default, jobs should execute within 10 minutes. You can alter the default time in your django ``PQ_DEFAULT_JOB_TIMEOUT`` setting. After that, the worker kills the work horse and puts the job onto the failed queue, indicating the job timed out.
 
 If a job requires more (or less) time to complete, the default timeout period can be loosened (or tightened), by specifying it as a keyword argument to the Queue.enqueue() call, like so:
 
@@ -292,17 +292,17 @@ Completed jobs hang around for a minimum TTL (time to live) of 500 seconds. Sinc
 Workers
 --------
 
-Work is done through pqworker, a django management command. To accept work on all queues, ``$ python manage.py pqworker``. 
+Work is done through pqworker, a django management command. To accept work on all queues, ``$ python manage.py pqworker``.
 
-To accept work on the fictional ``high``, ``default``, and ``low`` queues:
+To accept work on the fictional ``high``, ``low`` queues:
 
 .. code-block:: bash
 
-    $ python manage.py pqworker high default low
-    *** Listening for work on high, default, low
+    $ python manage.py pqworker high low
+    *** Listening for work on high, low
     Got send_newsletter('me@example.com') from default
     Job ended normally without result
-    *** Listening for work on high, default, low
+    *** Listening for work on high, low
 
 If you don’t see any output you might need to configure your django project ``LOGGING``. Here’s an example configuration that will print to the console:
 
