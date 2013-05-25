@@ -421,8 +421,9 @@ All settings are optional. Defaults listed below.
     SENTRY_DSN  # as per sentry
     PQ_DEFAULT_RESULT_TTL = 500  # minumum ttl for jobs
     PQ_DEFAULT_WORKER_TTL = 420  # worker will refresh the connection (and poll the database)
-    PQ_DEFAULT_JOB_TIMEOUT = 180  # jobs that exceed this time are failed
+    PQ_DEFAULT_JOB_TIMEOUT = 600  # jobs that exceed this time are failed
     PQ_ADMIN_CONNECTION = 'default'  # the connection to use for the admin
+    PQ_QUEUE_CACHE = True # Queue is cached in local memory on creation or retrieval
 
 Benchmarks & other lies
 -------------------------
@@ -444,41 +445,41 @@ To gauge rough performance a ``pqbenchmark`` management command is included that
     # If rq/redis is installed you can compare.
     $ django-admin.py pqbenchmark 50000 -w4 --sleep=250 --backend=rq
 
-Starting with an unrealistic benchmark on a Macbook Pro 2.6Ghz i7 with 8GB ram and 256 GB SSD drive I get the following jobs per second throughput with Postresapp (9.2.2.0), Redis Server (2.6.11) with 100,000 enqueued jobs on default settings. For pypy the psycopg2cffi driver is used:
-
-+-----------+-----------+-----------+-----------+-----------+
-| Workers   | PQ-Py2.7  | PQ-Py3.3  | PQ-PyPy2.0| RQ-Py2.7  |
-+===========+===========+===========+===========+===========+
-| 1         | 55        | 52        | 36        | 158       |
-+-----------+-----------+-----------+-----------+-----------+
-| 2         | 92        | 91        | 62        | 256       |
-+-----------+-----------+-----------+-----------+-----------+
-| 4         | 138       | 134       | 99        | 362       |
-+-----------+-----------+-----------+-----------+-----------+
-| 6         | 148       | 144       | 116       | 399       |
-+-----------+-----------+-----------+-----------+-----------+
-
-These results are unrealistic except to show theoretical differences between PQ and RQ. A commodity virtual server without the benefit of a local SSD for Postgresql will widen the gap dramatically between RQ and PQ, but as you can see from the numbers RQ is a far better choice for higher volumes of cheap tasks. Note that the PyPy numbers no doubt reflect the experimental status of the psycopg2cffi driver.
-
-Simulating a slow task that has 250ms overhead:
+Starting with an unrealistic benchmark on a Macbook Pro 2.6Ghz i7 with 8GB ram and 256 GB SSD drive I get the following jobs per second throughput with Postresapp (9.2.2.0), Redis Server (2.6.11) with 100,000 enqueued jobs on default settings:
 
 +-----------+-----------+-----------+
 | Workers   | PQ-Py2.7  | RQ-Py2.7  |
 +===========+===========+===========+
-| 1         | 3.3       | 3.9       |
+| 1         | 28        | 158       |
 +-----------+-----------+-----------+
-| 2         | 7.3       | 7.8       |
+| 2         | 42        | 256       |
 +-----------+-----------+-----------+
-| 4         | 14.6      | 15.3      |
+| 4         | 46        | 362       |
 +-----------+-----------+-----------+
-| 6         | 19.9      | 22.8      |
-+-----------+-----------+-----------+
-| 10        | 33.5      | 37.6      |
-+-----------+-----------+-----------+
-| 20        | 70.2      | 75.9      |
+| 6         | 45        | 399       |
 +-----------+-----------+-----------+
 
-Once your tasks get out to 250ms and beyond the differences between PQ and RQ become much more marginal. The important factor here are the tasks themselves, and how well your backend scales in memory usage and IO to the number of connections if you want to scale the number of workers. Obviously again the quasi-persistent RQ is going to scale better than your average disk bound postgresql installation.
+These results are unrealistic except to show theoretical differences between PQ and RQ. A commodity virtual server without the benefit of a local SSD for Postgresql will widen the gap dramatically between RQ and PQ, but as you can see from the numbers RQ is a far better choice for higher volumes of cheap tasks such as messaging. Unfortunately PQ needs to reset database connections between jobs which is main impediment to scaling workers.
+
+The point of a task queue however is to process slower tasks, so simulating a slower task that has 250ms overhead (or greater) is more realistic and the task queue overhead becomes less significant, worker scaling more practical. So adjusting ``--sleep`` to 250:
+
++-----------+-----------+-----------+
+| Workers   | PQ-Py2.7  | RQ-Py2.7  |
++===========+===========+===========+
+| 1         | 3.4       | 3.9       |
++-----------+-----------+-----------+
+| 2         | 6.8       | 7.8       |
++-----------+-----------+-----------+
+| 4         | 13.6      | 15.3      |
++-----------+-----------+-----------+
+| 6         | 17.5      | 22.8      |
++-----------+-----------+-----------+
+| 10        | 33.2      | 37.6      |
++-----------+-----------+-----------+
+| 20        | 44.5      | 75.9      |
++-----------+-----------+-----------+
+
+Once your tasks get out beyond 250ms the differences between PQ and RQ become much more marginal. The important factor here are the tasks themselves, and how well your backend scales in memory usage and IO to the number of connections. Obviously again the quasi-persistent RQ is going to scale better than your average disk bound postgresql installation. In general, the slower the task the better PQ will scale connections (since it has to reset connections less often).
 
 Development & Issues
 ---------------------
@@ -491,8 +492,6 @@ Unit testing with tox, nose2 and my nose2django plugin. To run the tests, clone 
 
     $ pip install tox
     $ tox
-
-
 
 I have been judicious about which tests were ported across from RQ, but hooray for tests. To make it easier to panel-beat smashed code django-pq does use setUp as its creator intended.
 
