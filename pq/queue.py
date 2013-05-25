@@ -16,7 +16,7 @@ from .exceptions import (DequeueTimeout, InvalidBetween,
                          InvalidInterval, InvalidQueueName)
 
 _PQ_QUEUES = {}
-PQ_DEFAULT_JOB_TIMEOUT = getattr(settings, 'PQ_DEFAULT_JOB_TIMEOUT', 180)
+PQ_DEFAULT_JOB_TIMEOUT = getattr(settings, 'PQ_DEFAULT_JOB_TIMEOUT', 600)
 PQ_QUEUE_CACHE = getattr(settings, 'PQ_QUEUE_CACHE', True)
 
 logger = logging.getLogger(__name__)
