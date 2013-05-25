@@ -93,6 +93,7 @@ class Queue(models.Model):
         created = False
         if not q:
             q, created = cls.objects.get_or_create(name=name)
+            _PQ_QUEUES[name] = q
         if not created and q.serial:
             raise InvalidQueueName("%s is a serial queue" % name)
         return q
