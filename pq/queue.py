@@ -70,7 +70,7 @@ class Queue(models.Model):
                connection='default', scheduled=False, async=True, idempotent=False):
         """Returns a Queue ready for accepting jobs"""
         queue = cls(name=cls.validated_name(name))
-        queue.default_timeout = default_timeout
+        queue.default_timeout = default_timeout or PQ_DEFAULT_JOB_TIMEOUT
         queue.connection = connection
         queue.scheduled = scheduled
         queue.idempotent = idempotent

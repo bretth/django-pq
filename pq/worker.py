@@ -23,7 +23,7 @@ from django.utils.timezone import now
 from six import u
 
 from .queue import Queue as PQ
-from .queue import get_failed_queue
+from .queue import PQ_DEFAULT_JOB_TIMEOUT, get_failed_queue
 from .flow import Flow, FlowStore
 from .job import Job
 from .utils import make_colorizer
@@ -41,6 +41,7 @@ blue = make_colorizer('darkblue')
 
 PQ_DEFAULT_WORKER_TTL = getattr(settings, 'PQ_DEFAULT_WORKER_TTL', 420)
 PQ_DEFAULT_RESULT_TTL = getattr(settings, 'PQ_DEFAULT_RESULT_TTL', 500)
+
 
 logger = logging.getLogger(__name__)
 
@@ -207,6 +208,15 @@ class Worker(models.Model):
             self.expire = self.default_worker_ttl
             self._clear_expired = now()
             self.save()
+        # clear out any expired workers
+        Worker.objects.filter(
+            heartbeat__lte=now())\
+            .delete()
+
+    def register_heartbeat(self, timeout):
+        """Register a heartbeat"""
+        if self.heartbeat < now():
+            self.save(timeout=timeout)
 
     def register_death(self):
         """Registers its own death deleting the instance"""
@@ -310,12 +320,11 @@ class Worker(models.Model):
                 self.state = 'busy'
 
                 job, queue = result
+                self.register_heartbeat(job.timeout or PQ_DEFAULT_JOB_TIMEOUT)
                 self.log.info('%s: %s (%s)' % (green(queue.name),
                     blue(job.description), job.id))
                 close_connection()
                 self.fork_and_perform_job(job)
-
-
                 did_perform_work = True
         finally:
             if not self.is_horse:
@@ -414,7 +423,7 @@ class Worker(models.Model):
             if q.name == job.queue_id:
                 break
         try:
-            with death_penalty_after(job.timeout or 180):
+            with death_penalty_after(job.timeout or PQ_DEFAULT_JOB_TIMEOUT):
                 rv = job.perform()
 
             # Pickle the result in the same try-except block since we need to
@@ -498,6 +507,8 @@ class Worker(models.Model):
         return self._exc_handlers.pop()
 
     def save(self, *args, **kwargs):
+        timeout = kwargs.get('timeout', PQ_DEFAULT_JOB_TIMEOUT)
+        self.heartbeat = now() + timedelta(seconds=timeout+PQ_DEFAULT_WORKER_TTL)
         if self.stop:
             for q in self.queue_names.split(','):
                 PQ.objects.get(name=q).notify('stop')
