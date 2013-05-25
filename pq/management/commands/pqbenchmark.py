@@ -42,7 +42,7 @@ def feeder(num_jobs, backend, sleep):
 
 class Command(BaseCommand):
     help = "Benchmarks PQ and RQ"
-    args = "<number of workers>"
+    args = "<number of jobs>"
 
     option_list = BaseCommand.option_list + (
         make_option('--workers', '-w', default=1, dest='workers',
