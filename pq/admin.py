@@ -65,7 +65,7 @@ class ScheduledJobAdmin(admin.ModelAdmin):
     def queryset(self, request):
         return self.model.objects.using(
             CONN).filter(status=0).exclude(queue__name='failed').exclude(queue=None)
-    
+
     def has_add_permission(self, request):
         return False
 
@@ -80,7 +80,7 @@ requeue_jobs.short_description = "Requeue selected jobs"
 class DequeuedJobAdmin(admin.ModelAdmin):
     list_display = ('__unicode__', 'origin', 'status', 'enqueued_at', 'ended_at')
     list_filter = ('origin', 'status')
-    ordering = ('id',)
+    ordering = ('-enqueued_at',)
     actions = [requeue_jobs]
 
     def __init__(self, *args, **kwargs):
