@@ -1,7 +1,9 @@
 import os
 import time
 import times
+from datetime import datetime
 from django.test import TransactionTestCase, TestCase
+from django.utils.timezone import utc
 from nose2.tools import params
 
 from pq import Queue
@@ -230,3 +232,13 @@ class TestWorkerDequeueTimeout(TransactionTestCase):
         self.w.work()
         self.assertEqual(self.w._expires_after, -1)
 
+
+class TestRegisterHeartbeat(TransactionTestCase):
+
+    def setUp(self):
+        self.q = Queue()
+        self.w = Worker.create([self.q], name='Test')
+        self.w.heartbeat = datetime(2010,1,1, tzinfo=utc)
+
+    def test_worker_register_heartbeat(self):
+        self.w.register_heartbeat(timeout=0)
