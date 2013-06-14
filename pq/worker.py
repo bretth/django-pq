@@ -507,7 +507,7 @@ class Worker(models.Model):
         return self._exc_handlers.pop()
 
     def save(self, *args, **kwargs):
-        timeout = kwargs.get('timeout', PQ_DEFAULT_JOB_TIMEOUT)
+        timeout = kwargs.pop('timeout', PQ_DEFAULT_JOB_TIMEOUT)
         self.heartbeat = now() + timedelta(seconds=timeout+PQ_DEFAULT_WORKER_TTL)
         if self.stop:
             for q in self.queue_names.split(','):
