@@ -1,5 +1,11 @@
 #!/usr/bin/env python
 
+# Fix for Python issue 15881, fixed in 2.7.6 and 3.2
+try:
+    import multiprocessing
+except ImportError:
+    pass
+
 try:
     from setuptools import setup
 except ImportError:
