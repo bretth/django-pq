@@ -1,6 +1,10 @@
 django-pq
 ==========
 
+**Warning: This library is unmaintained.** 
+
+*(Edited 13-Oct-2014. With significant improvements to the Celery api since 3.0 and the recent inclusion of an experimental Django backend I have no motivation to put in the work needed to iron out the reported bugs and undocumented design flaws in this package.)*
+
 A task queue with scheduling and simple workflow engine based on the elegant RQ_ but with a django postgresql backend, using postgresql's asynchronous notifications to wait for work.
 
 RQ sets a low barrier for entry, and django-pq takes it lower for sites that can’t or don’t want to use Redis in their stack. By using django-pq you are trading off throughput on cheap tasks for the transactional integrity of Postgresql. For tasks that are expected to complete in a few milliseconds or less such as internal messaging you can expect RQ to be at least 5x faster than django-pq. For expensive tasks taking 1/2 a second or more to complete the throughput of RQ and django-pq will be about the same. As such, django-pq is suitable for very low volume messaging or slow running task applications (see benchmarks below).
